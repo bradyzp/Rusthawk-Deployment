@@ -40,6 +40,8 @@ param (
 #Config Generation Block
 #---------------------------------#
 
+Import-Module DeploymentConfiguration.psm1
+
 DSCPullServer          -ConfigurationData $configdata  -Role 'PullServer'   -OutPath $ConfigPath
 DomainController       -ConfigurationData $configdata  -Role 'PDC'          -OutPath $ConfigPath
 DomainController       -ConfigurationData $configdata  -Role 'DC'           -OutPath $ConfigPath

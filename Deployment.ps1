@@ -33,4 +33,23 @@
 #>
 
 
+param (
+    [String]$ConfigPath = "./config"
+    )
+#---------------------------------#
+#Config Generation Block
+#---------------------------------#
+
+DSCPullServer          -ConfigurationData $configdata  -Role 'PullServer'   -OutPath $ConfigPath
+DomainController       -ConfigurationData $configdata  -Role 'PDC'          -OutPath $ConfigPath
+DomainController       -ConfigurationData $configdata  -Role 'DC'           -OutPath $ConfigPath
+FileServer             -ConfigurationData $configdata  -Role 'FileServer'   -OutPath $ConfigPath
+
+#Generate DSC Checksum for configs for DSC Pull
+New-DSCCheckSum         -ConfigurationPath $ConfigPath
+
+
+
+
+
 

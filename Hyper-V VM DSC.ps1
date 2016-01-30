@@ -3,7 +3,9 @@
     param (
         [string]$HyperVNode = 'hawkwing.red-hawk.net',
         [string]$BaseVHDPath = 'C:\Basevhd.vhdx',
-        [string]$DSCWebPath
+        [string]$DSCWebPath,
+        [parameter(Mandatory)]
+        [string]$Role
     )
 
     Import-DscResource -Module xHyper-V,xPSDesiredStateConfiguration
@@ -20,6 +22,8 @@
                 )
 
     
+    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {}
+
     Node $HyperVNode
     {
         $VMName = 'DEV-DSCPULL-SRV02'
@@ -55,7 +59,7 @@
             Name                 = $VMName
             VhDPath              = $vhdpath -f $VMName
             SwitchName           = "Red-Hawk Production"
-            State                = 'Off'
+            State                = "Off"
             StartupMemory        = 2048MB
             MACAddress           = "00155D8A54A0" 
             Generation           = 2

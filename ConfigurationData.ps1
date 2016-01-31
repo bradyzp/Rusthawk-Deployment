@@ -18,7 +18,7 @@ $PullNodeGUID   = [guid]::NewGuid()
         };
         @{
             #This will be injected into the VHD - so target localhost
-            #Test this - assign GUID for use by pull config - see if machine still configures when inserted to pending.mof
+            #Test this - assign GUID for use by pull config - see if machine still configures when inserted to pending.mof - it does
             NodeName                = $PullServerGUID
             MachineName             = 'PullServer'
             Role                    = 'PullServer'

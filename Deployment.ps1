@@ -72,6 +72,7 @@ New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
 #Need to generate HV Config last as it includes copying of all the above resources
 HyperVHost -ConfigurationData $ConfigData -Role 'HyperVHost' -ResourceCopy $ConfigPath -OutPath $ConfigPath
 
-
+Set-DscLocalConfigurationManager 
+Start-DscConfiguration -Path $ConfigPath\HyperVHost -Wait -Force -Verbose
 
 

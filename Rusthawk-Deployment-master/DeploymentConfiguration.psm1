@@ -10,6 +10,7 @@ Configuration VirtualMachine
     xVHD VHD
     {
         ParentPath           = $Node.VHDParentPath
+        Name                 = $VMConfig.MachineName
         Path                 = $Node.VHDDestinationPath -f $VMConfig.MachineName
         Generation           = $Node.VHDGeneration
         Ensure               = "Present"

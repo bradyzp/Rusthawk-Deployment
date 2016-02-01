@@ -1,7 +1,8 @@
 ﻿param (
     #Host DSC Resources
-    [String]$DSCResourcePath    = "C:\Hyper-V\DSC\Resources\{0}"  
-    [String]$HyperVHost         = "localhost"
+    [Parameter(Mandatory)]
+    [String]$DSCResourcePath    = "C:\Hyper-V\DSC\Resources\Deploy\{0}",
+    [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net"
 )
 
@@ -54,6 +55,7 @@ $PullNodeGUID   = [guid]::NewGuid()
             VHDDestinationPath  = "C:\Hyper-V\DSC\{0}.vhdx"
             VHDPartitionNUmber  = 4
             SwitchName          = "Red-Hawk Production"
+            SwitchType          = "External"
             VMState             = "Running"
             
             DSCPullServer = @{
@@ -63,8 +65,12 @@ $PullNodeGUID   = [guid]::NewGuid()
                 VMGeneration    = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $DSCResourcePath -f 'pullserver.mof';
+                        Source      = $DSCResourcePath -f "$PullServerGUID.mof";
                         Destination = 'Windows\System32\Configuration\pending.mof'
+                    }
+                    @{
+                        Source      = $DSCResourcePath -f "$PullServerGUID.meta.mof";
+                        Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
                         Source      = $DSCResourcePath -f 'pullserver_unattend.xml';
@@ -75,8 +81,7 @@ $PullNodeGUID   = [guid]::NewGuid()
                         Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
                     }
                     @{
-                        #Copy any generated node configurations - fix pathing
-                        Source      = $DSCResourcePath -f 'NodeConfig\';
+                        Source      = $DSCResourcePath -f 'Deploy\Nodes\*.mof';
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
                     }
                 ) 
@@ -98,7 +103,6 @@ $PullNodeGUID   = [guid]::NewGuid()
                     }
                 )
             }
-            
             FirstDomainController = @{
                 MachineName     = "FirstDomainController"
                 MemorySizeVM    = 2048MB

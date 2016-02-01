@@ -44,11 +44,12 @@ Configuration VirtualMachine
 Configuration HyperVHost {
     param (
         [Parameter(Mandatory)]
-        [String]$Role,
-        [String]$ResourceCopy
+        [String]$Role
     )
 
-    Import-DSCResource -ModuleName xHyper-V
+    Import-DSCResource -ModuleName xHyper-V, PSDesiredStateConfiguration
+
+    #Write-Verbose ("Current Invocation: {0}" -f (Split-Path $MyInvocation.MyCommand.Definition))
 
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
         WindowsFeature HyperV {
@@ -61,16 +62,7 @@ Configuration HyperVHost {
             Ensure = "Present"
             DependsOn = "[WindowsFeature]HyperV"
         }
-        if($ResourceCopy) {
-        #Copy resources required for target nodes from the DSC initiator to the Hyper-V Host
-            File ResourceCopy {
-                DestinationPath = $Node.ResourcePath
-                SourcePath = $ResourceCopy
-                Recurse = $true
-                Type = "Directory"
-                Checksum = "SHA-256"
-            }
-        }
+        
     }
 }
 
@@ -92,7 +84,7 @@ Configuration PullServer {
         [String]$Role
     )
 
-    Import-DscResource -ModuleName xPSDesiredStateConfiguration,xNetworking,xComputerManagement
+    Import-DscResource -ModuleName xNetworking, xComputerManagement,xPSDesiredStateConfiguration,PSDesiredStateConfiguration
 
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
 
@@ -100,7 +92,7 @@ Configuration PullServer {
             Ensure = "Present"
             Name = "DSC-Service"
         }
-        xDSCWebService PullServer {
+        xDSCWebService PullServerEP {
             EndpointName        = "DSCPullServer"
             CertificateThumbPrint = $Node.CertificateThumbprint
             ConfigurationPath   = $Node.ConfigurationPath
@@ -108,7 +100,7 @@ Configuration PullServer {
             ModulePath          = $Node.ModulePath
             PhysicalPath        = $Node.PhysicalPath
             RegistrationKeyPath = $Node.RegistrationKeyPath
-            State               = $Node.State
+            State               = "Started"
             IsComplianceServer  = $false
             Ensure              = "Present"
             DependsOn           = "[WindowsFeature]DSCService"
@@ -117,17 +109,31 @@ Configuration PullServer {
             xIPAddress PullServerStaticIP {
                 IPAddress       = $Node.IPAddress
                 SubnetMask      = $Node.SubnetMask
-                InterfaceAlias  = "*Ethernet*"
+                InterfaceAlias  = "Ethernet*"
                 AddressFamily   = $Node.AddressFamily
             }
         } #Else rely on DHCP
         xComputer PullServerName {
             Name          = $Node.MachineName
             WorkGroupName = 'WORKGROUP'
-            DomainName    = $Node.DomainName
+            #DomainName    = $Node.DomainName
             #TODO: Implement credentials for operations
-            Credential    = ''
+            #Credential    = ''
         }
+        LocalConfigurationManager {
+            ConfigurationModeFrequencyMins = 30
+            ConfigurationMode = "ApplyAndAutoCorrect"
+            RefreshMode = "Pull"
+            RefreshFrequencyMins = 30
+            DownloadManagerName = "WebDownloadManager"
+            DownloadManagerCustomData = @{ServerUrl="http://172.16.10.155:8080/psdscpullserver.svc";
+                                          AllowUnsecureConnection = 'true'
+                                         }
+            ConfigurationID = $Node.NodeName
+            RebootNodeIfNeeded = $true
+            AllowModuleOverwrite = $true
+        }
+
     }
 }
 
@@ -150,7 +156,7 @@ Configuration PullNode {
     )
     
     #We will just be creating a sample configuration for testing Pull config
-    Import-DSCResource xNetworking,xComputerManagement
+    Import-DSCResource -ModuleName xNetworking, xComputerManagement,PSDesiredStateConfiguration
     
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
         WindowsFeature TestFeature {
@@ -166,6 +172,10 @@ Configuration PullNode {
             UserName = 'Administrator'
             Disabled = $True
             Ensure = "Present"
+        }
+        LocalConfigurationManager {
+            RebootNodeIfNeeded = $True
+
         }
     }
 }

@@ -9,7 +9,7 @@
     #TBD
 
 .LINK
-    #TBD
+    https://github.com/rusthawk/Rusthawk-Deployment
 
 .NOTES
     Hyper-V Host and BaseVhd must have at least 'Windows Management Framework 5.0 Experimental July 2014 (KB2969050)' installed to run this example.  
@@ -32,35 +32,43 @@
         - xVMSwitch   
 #>
 
-
 param (
-    [String]$ConfigRoot = "config"
+    [String]$DeployShare = "\\hawkwing\dsc\Rusthawk-Deployment"
     )
 
 
 #---------------------------------#
-#Setup and Path Config
+#Setup and Path/Dir Config
 #---------------------------------#
 
-$scriptLocation = $PSScriptRoot
-$ConfigPath = Join-Path $scriptLocation $ConfigRoot
-$NodeConfigs = Join-Path $ConfigPath "Nodes"
+
+$ConfigPath  = Join-Path -Path $PSScriptRoot -ChildPath "Deploy"
+$NodeConfigs = Join-Path -Path $ConfigPath   -ChildPath "Nodes"
+$HVConfigs   = Join-Path -Path $PSScriptRoot -ChildPath "HyperV"
+
+Remove-Item $ConfigPath -Force -Recurse
+
+if(-not (Test-Path $ConfigPath)) {
+    New-Item -Path $ConfigPath -ItemType Directory -Force
+}
+
 if(-not (Test-Path $NodeConfigs)) {
-    mkdir $NodeConfigs
+    New-Item -Path $NodeConfigs -ItemType Directory -Force
 }
 
 #---------------------------------#
 #Config Generation Block
 #---------------------------------#
-$ConfigData = & "$scriptlocation\ConfigurationData.ps1"
+$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -DSCResourcePath "" -HyperVHost hawkwing
 
-Import-Module DeploymentConfiguration.psm1
+#Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
+Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
-PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutPath $ConfigPath
-PullServer     -ConfigurationData $ConfigData -Role 'PullServer'   -OutPath $ConfigPath
+Import-Module $PSScriptRoot\DeploymentConfiguration.psm1
 
-PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutPath $ConfigPath
-PullNode       -ConfigurationData $ConfigData -Role 'PullNode'     -OutPath $NodeConfigs
+PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ConfigPath\PullServer
+
+PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigs
 
 #DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigs
 #DomainController       -ConfigurationData $ConfigData -Role 'DC'           -OutPath $NodeConfigs
@@ -69,9 +77,20 @@ PullNode       -ConfigurationData $ConfigData -Role 'PullNode'     -OutPath $Nod
 #Generate DSC Checksum for configs for DSC Pull
 New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
 
-#Need to generate HV Config last as it includes copying of all the above resources
-HyperVHost -ConfigurationData $ConfigData -Role 'HyperVHost' -ResourceCopy $ConfigPath -OutPath $ConfigPath
+#Deploy Node files to HyperVisor via Windows Share
+Copy-Item -Path $ConfigPath -Recurse -Destination $DeployShare -Force
 
+#-------------------------------------------#
+#Generate and Push HyperV/VM Configurations
+#-------------------------------------------#
 
+HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
+Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
 
+PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
+Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
+
+#This guy is just for testing
+PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
+Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
 

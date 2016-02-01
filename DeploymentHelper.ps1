@@ -103,3 +103,10 @@ function GenerateUnattend {
     $unattendXML = $unattendStruct -f $specialize,$oobe
 
 }
+
+
+function GenerateCredentials {
+    
+
+
+}

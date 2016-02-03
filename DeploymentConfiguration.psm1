@@ -49,8 +49,6 @@ Configuration HyperVHost {
 
     Import-DSCResource -ModuleName xHyper-V, PSDesiredStateConfiguration
 
-    #Write-Verbose ("Current Invocation: {0}" -f (Split-Path $MyInvocation.MyCommand.Definition))
-
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
         WindowsFeature HyperV {
             Ensure = "Present"
@@ -62,7 +60,6 @@ Configuration HyperVHost {
             Ensure = "Present"
             DependsOn = "[WindowsFeature]HyperV"
         }
-        
     }
 }
 

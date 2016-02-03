@@ -42,14 +42,14 @@ param (
 #---------------------------------#
 
 
-$ConfigPath  = Join-Path -Path $PSScriptRoot -ChildPath "Deploy"
-$NodeConfigs = Join-Path -Path $ConfigPath   -ChildPath "Nodes"
-$HVConfigs   = Join-Path -Path $PSScriptRoot -ChildPath "HyperV"
+$DSCResourcePath    = Join-Path -Path $PSScriptRoot -ChildPath "Deploy"
+$NodeConfigs        = Join-Path -Path $DSCResourcePath   -ChildPath "Nodes"
+$HVConfigs          = Join-Path -Path $PSScriptRoot -ChildPath "HyperV"
 
-Remove-Item $ConfigPath -Force -Recurse
+Remove-Item $DSCResourcePath -Force -Recurse
 
-if(-not (Test-Path $ConfigPath)) {
-    New-Item -Path $ConfigPath -ItemType Directory -Force
+if(-not (Test-Path $DSCResourcePath)) {
+    New-Item -Path $DSCResourcePath -ItemType Directory -Force
 }
 
 if(-not (Test-Path $NodeConfigs)) {
@@ -59,14 +59,14 @@ if(-not (Test-Path $NodeConfigs)) {
 #---------------------------------#
 #Config Generation Block
 #---------------------------------#
-$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -DSCResourcePath "" -HyperVHost hawkwing
+$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -DSCResourcePath $DSCResourcePath -HyperVHost hawkwing
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
 Import-Module $PSScriptRoot\DeploymentConfiguration.psm1
 
-PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ConfigPath\PullServer
+PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $DSCResourcePath\PullServer
 
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigs
 
@@ -78,7 +78,7 @@ PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $N
 New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
 
 #Deploy Node files to HyperVisor via Windows Share
-Copy-Item -Path $ConfigPath -Recurse -Destination $DeployShare -Force
+Copy-Item -Path $DSCResourcePath -Recurse -Destination $DeployShare -Force
 
 #-------------------------------------------#
 #Generate and Push HyperV/VM Configurations

@@ -2,6 +2,8 @@
     #Host DSC Resources
     [Parameter(Mandatory)]
     [String]$DSCResourcePath    = "C:\Hyper-V\DSC\Resources\Deploy\{0}",
+    [Parameter(Mandatory)]
+    [String]$VHDPath,
     [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net"
 )
@@ -18,8 +20,6 @@ $PullNodeGUID   = [guid]::NewGuid()
             NodeName = "*"
         };
         @{
-            #This will be injected into the VHD - so target localhost
-            #Test this - assign GUID for use by pull config - see if machine still configures when inserted to pending.mof
             NodeName                = $PullServerGUID
             MachineName             = 'PullServer'
             Role                    = 'PullServer'
@@ -52,7 +52,7 @@ $PullNodeGUID   = [guid]::NewGuid()
             ResourcePath        = "$env:SystemDrive\Hyper-V\DSC\Resources\"
             VHDParentPath       = $DSCResourcePath -f "parentvhd.vhdx"
             VHDGeneration       = "VHDX"
-            VHDDestinationPath  = "C:\Hyper-V\DSC\{0}.vhdx"
+            VHDDestinationPath  = "$VHDPath\{0}.vhdx"
             VHDPartitionNUmber  = 4
             SwitchName          = "Red-Hawk Production"
             SwitchType          = "External"
@@ -101,28 +101,37 @@ $PullNodeGUID   = [guid]::NewGuid()
                         Source      = $DSCResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
                     }
+                    @{
+                        Source      = $DSCResourcePath -f 'startlcm.ps1'
+                        Destination = 'Scripts\startlcm.ps1'
+                    }
+                    @{
+                        Source      = $DSCResourcePath -f 'setup.cmd'
+                        Destination = 'Scripts\setup.cmd'
+                    }
                 )
             }
+            
             FirstDomainController = @{
                 MachineName     = "FirstDomainController"
                 MemorySizeVM    = 2048MB
-                MACAddress      = "00155D8A54A9"
+                #MACAddress      = "00155D8A54A9"
                 VMGeneration    = 2
                 VMFileCopy      = @(
                     #Insert metaconfig for Domain Controller
                 )
             }
             
-            
-            
-            
+            SecondDomainController = @{
+                MachineName     = "SecondDomainController"
+                MemorySizeVM    = 2048MB
+                VMGeneration    = 2
+                VMFileCopy      = @(
+                    
+                    
+                )
+            }
         }
     );
-    #Not sure if this will be necesarry or not
-    GUIDS = @{
-        'PullNode'  = $PullNodeGUID
-        
-    }
-        
-        
+    NonNodeData = @{};
 }

@@ -3,16 +3,25 @@
     [Parameter(Mandatory)]
     [String]$ScriptRoot,
     [Parameter(Mandatory)]
-    [String]$VHDPath,
+    [String]$BaseVHDPath,
     [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net"
 )
 
 $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
 
+##
+#ResourcePath - Where any ancilliary resource files will be located for copying to nodes
+#NodeConfigs - Subpath of ResourcePath where node .mof files are located
+##
+
 #Generate GUIDs for Machines
 $PullServerGUID = [guid]::NewGuid()
 $PullNodeGUID   = [guid]::NewGuid()
+$FirstDomainControllerGUID = [guid]::NewGuid()
+$SecondDomainControllerGUID = [guid]::NewGuid()
+
+#This can probably be set in NonNodeData
 $PullServerIP   = '172.16.10.150'
 
 @{
@@ -50,12 +59,39 @@ $PullServerIP   = '172.16.10.150'
             RefreshMode             = 'Pull'
         };
         @{
+            NodeName            = $FirstDomainControllerGUID
+            MachineName         = 'FirstDomainController'
+            Role                = 'FirstDomainController'
+            DomainName          = $NewDomainName
+            StaticIP            = $True
+            IPAddress           = '172.16.1.21'
+            SubnetMask          = '24'
+            RefreshMode         = 'Pull'
+            
+            DomainAdminCreds    = ''
+            DomainSafeModePW    = ''
+            
+        };
+        @{
+            NodeName            = $SecondDomainControllerGUID
+            MachineName         = 'SecondDomainController'
+            Role                = 'DomainController'
+            DomainName          = $NewDomainName
+            StaticIP            = $True
+            IPAddress           = '172.16.1.31'
+            SubnetMask          = '24'
+            RefreshMode         = 'Pull'
+            
+            
+        }
+        
+        @{
             NodeName            = $HyperVHost
             Role                = "HyperVHost"
             ResourcePath        = "$env:SystemDrive\Hyper-V\DSC\Resources\"
             VHDParentPath       = $ScriptRoot -f "parentvhd.vhdx"
             VHDGeneration       = "VHDX"
-            VHDDestinationPath  = "$VHDPath\{0}.vhdx"
+            VHDDestinationPath  = "$BaseVHDPath\{0}.vhdx"
             VHDPartitionNUmber  = 4
             SwitchName          = "Red-Hawk Production"
             SwitchType          = "External"

@@ -1,4 +1,15 @@
-﻿
+﻿function Get-DscResourceModulePath
+{
+    param(
+        [Parameter(Mandatory)]
+        [string] $DscResourceName)
+
+    $dscResource = Get-DscResource $DscResourceName
+    $dscResource.Module.ModuleBase
+}
+
+
+
 Configuration VirtualMachine
 {
     param (
@@ -120,17 +131,10 @@ Configuration PullServer {
         LocalConfigurationManager {
             ConfigurationModeFrequencyMins = 30
             ConfigurationMode = "ApplyAndAutoCorrect"
-            RefreshMode = "Pull"
-            RefreshFrequencyMins = 30
-            DownloadManagerName = "WebDownloadManager"
-            DownloadManagerCustomData = @{ServerUrl="http://172.16.10.155:8080/psdscpullserver.svc";
-                                          AllowUnsecureConnection = 'true'
-                                         }
-            ConfigurationID = $Node.NodeName
+            
             RebootNodeIfNeeded = $true
             AllowModuleOverwrite = $true
         }
-
     }
 }
 
@@ -171,18 +175,30 @@ Configuration PullNode {
             Ensure = "Present"
         }
         LocalConfigurationManager {
-            RebootNodeIfNeeded = $True
+            
+
 
         }
     }
 }
 
-function Get-DscResourceModulePath
-{
-    param(
+#Generate LCM Settings to 
+Configuration PullNodeLCM  {
+    param (
         [Parameter(Mandatory)]
-        [string] $DscResourceName)
-
-    $dscResource = Get-DscResource $DscResourceName
-    $dscResource.Module.ModuleBase
+        [String]$RefreshMode
+    )
+    Node $AllNodes.Where{$_.RefreshMode -eq $RefreshMode}.NodeName {
+        LocalConfigurationManager {
+            RebootNodeIfNeeded = $True
+            RefreshMode = "Pull"
+            ConfigurationID = $Node.NodeName
+            RefreshFrequencyMins = 30
+            DownloadManagerName = "WebDownloadManager"
+            #Add variable or dns name property for pull server
+            DownloadManagerCustomData = @{ServerUrl="http://$($NonNodeData.PullServerAddress)`:$($NonNodeData.PullServerPort)/psdscpullserver.svc";
+                                            AllowUnsecureConnection = 'true'
+                                            }
+        }
+    }
 }

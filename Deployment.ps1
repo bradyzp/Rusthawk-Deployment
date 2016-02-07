@@ -29,22 +29,26 @@
         - xVHD
         - xVhdFile
         - xVMHyperV
-        - xVMSwitch   
+        - xVMSwitch 
 #>
 
-param (
-    [String]$DeployShare = "\\hawkwing\dsc\Rusthawk-Deployment"
-    )
+#BRANCH: LocalExecution
+#Configure script for execution locall from hyper-v host - remove some complexity with pathing
 
+param (
+    #[String]$DeployShare = "\\hawkwing\dsc\Rusthawk-Deployment"
+    )
 
 #---------------------------------#
 #Setup and Path/Dir Config
 #---------------------------------#
 
-
-$DSCResourcePath    = Join-Path -Path $PSScriptRoot -ChildPath "Deploy"
-$NodeConfigs        = Join-Path -Path $DSCResourcePath   -ChildPath "Nodes"
-$HVConfigs          = Join-Path -Path $PSScriptRoot -ChildPath "HyperV"
+#Sub folder containing any resource files required by the script - e.g. VHDx template files, generated DSC MOF files
+$ResourcePath    = Join-Path -Path $PSScriptRoot    -ChildPath "Resources"
+#Path to store generated node MOF files, these files are injected into VHDs to perform initial configuration tasks
+$NodeConfigs     = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
+#Path to store xHyperV Configuration files to be executed on the Hyper-V Host, these aren't referenced by any script except this when executing Start-DSCConfiguration
+$VMConfigs       = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
 
 Remove-Item $DSCResourcePath -Force -Recurse
 
@@ -59,7 +63,7 @@ if(-not (Test-Path $NodeConfigs)) {
 #---------------------------------#
 #Config Generation Block
 #---------------------------------#
-$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -DSCResourcePath $DSCResourcePath -HyperVHost hawkwing
+$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -ResourceBasePath $ResourcePath -NodeConfigs $NodeConfigs
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
@@ -69,7 +73,9 @@ Import-Module $PSScriptRoot\DeploymentConfiguration.psm1
 PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $DSCResourcePath\PullServer
 
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigs
+PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigs
 
+#Not Yet Implemented
 #DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigs
 #DomainController       -ConfigurationData $ConfigData -Role 'DC'           -OutPath $NodeConfigs
 #FileServer             -ConfigurationData $ConfigData -Role 'FileServer'   -OutPath $NodeConfigs
@@ -77,20 +83,20 @@ PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $N
 #Generate DSC Checksum for configs for DSC Pull
 New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
 
-#Deploy Node files to HyperVisor via Windows Share
-Copy-Item -Path $DSCResourcePath -Recurse -Destination $DeployShare -Force
 
 #-------------------------------------------#
 #Generate and Push HyperV/VM Configurations
 #-------------------------------------------#
 
-HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
-Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
+#Host Config - Ensure presense of Hyper-V Role
+HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
+Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
 
-PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
-Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
+#Create the PullServerVM
+PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
+Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
 
 #This guy is just for testing
-PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
-Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
+PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
+Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
 

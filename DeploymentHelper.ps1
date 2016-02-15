@@ -23,16 +23,15 @@ function GenerateUnattend {
         [string]$FirstLoginScript,
 
         [Switch]$Autologon,
-        [String]$LoginAccount,
-        [String]$LoginPasswd,
+        [String]$AdminPasswd,
 
         [string]$TimeZone,
         
-        [Hastable]$LogonCommand
-
-
+        #Provide hashtable of "command : order"
+        [Hashtable[]]$LogonCommand
     )
 
+#Synchronous Command Block
     $synccommand = @"
     <SynchronousCommand wcm:action="add">
         <CommandLine>{0}</CommandLine>
@@ -45,63 +44,81 @@ function GenerateUnattend {
     $LogonCommand | % {
         $command += $synccommand -f $_.Command,$_.Order
     }
-    $firstlogoncommands = @"
-    <FirstLogonCommands>
 
+    #Compile the synchronous commands into the FirstLogonCommands block
+    $FirstLogonCommands = @"
+    <FirstLogonCommands>
+        {0}
     <FirstLogonCommands>
 "@ -f $command
 
-    $unattendStruct = @"
-    <?xml version="1.0" encoding="utf-8"?>
-        <unattend xmlns="urn:schemas-microsoft-com:unattend">
-            <settings pass="specialize">
-            {0}
-            </settings>
-            <settings pass="oobeSystem">
-            {1}
-            </settings>
-        <cpi:offlineImage cpi:source="" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
-    </unattend>
-
-    $specialize = @"
-    <?xml version="1.0" encoding="utf-8"?>
-        <unattend xmlns="urn:schemas-microsoft-com:unattend">
-            <settings pass="specialize">
-                <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-                    <ComputerName>$Computername</ComputerName>
-                    <RegisteredOrganization>$Organization</RegisteredOrganization>
-                    <RegisteredOwner>$Owner</RegisteredOwner>
-                    <TimeZone>$Timezone</TimeZone>
-                </component>
-"@
-
+#OOBE Block
     $oobe = @"
-    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <UserAccounts>
-            <AdministratorPassword>
-                <Value>$Adminpassword</Value>
-                <PlainText>true</PlainText>
-            </AdministratorPassword>
-        </UserAccounts>
-        $firstlogoncommands
-	    <AutoLogon>
-	        <Password>
-	            <Value>$Adminpassword</Value>
-	            <PlainText>true</PlainText>
-	        </Password>
-	    <Username>administrator</Username>
-	    <LogonCount>1</LogonCount>
-	    <Enabled>true</Enabled>
-	    </AutoLogon>
-        <OOBE>
-            <HideEULAPage>true</HideEULAPage>
-            <SkipMachineOOBE>true</SkipMachineOOBE>
-        </OOBE>
-    </component>
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <FirstLogonCommands>
+                {0}
+            </FirstLogonCommands>
+            <OOBE>
+                <HideEULAPage>true</HideEULAPage>
+                <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+                <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+                <NetworkLocation>Work</NetworkLocation>
+                <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+            </OOBE>
+            <RegisteredOwner>Rusthawk.net</RegisteredOwner>
+            <RegisteredOrganization>Rusthawk.net</RegisteredOrganization>
+            <UserAccounts>
+                <AdministratorPassword>
+                    <Value>dABlAHMAdABwAGEAcwBzAHcAbwByAGQAQQBkAG0AaQBuAGkAcwB0AHIAYQB0AG8AcgBQAGEAcwBzAHcAbwByAGQA</Value>
+                    <PlainText>false</PlainText>
+                </AdministratorPassword>
+            </UserAccounts>
+        </component>
+        </component>
+"@ -f $FirstLogonCommands
+
+#Specialize block
+    $specialize = @"
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <AutoLogon>
+                <Password>
+                    <Value>$AdminPasswd</Value>
+                    <PlainText>true</PlainText>
+                </Password>
+                <LogonCount>10</LogonCount>
+                <Username>administrator</Username>
+                <Enabled>true</Enabled>
+            </AutoLogon>
+            <ComputerName>$ComputerName</ComputerName>
+        </component>
 "@
 
-    $unattendXML = $unattendStruct -f $specialize,$oobe
+$specialize_pass = @"
+    <settings pass="specialize">
+    {0}
+    </settings>
+"@ -f $specialize
 
+$oobeSystem_pass = @"
+    <settings pass="oobeSystem">
+    {0}
+    </settings>
+"@ -f $oobe
+
+
+####
+#UnattendStruct provides the basis for the unattend.xml structure - other blocks are formatted into it.
+####
+    $UnattendXML = @"
+<?xml version="1.0" encoding="utf-8"?>
+    <unattend xmlns="urn:schemas-microsoft-com:unattend">
+        {0}
+        {1}
+    <cpi:offlineImage cpi:source="" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
+</unattend>
+"@ -f $specialize,$oobe
+
+    $UnattendXML
 }
 
 

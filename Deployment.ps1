@@ -83,27 +83,13 @@ PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $N
 #Generate DSC Checksum for configs for DSC Pull
 New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
 
-
 #-------------------------------------------#
 #Generate and Push HyperV/VM Configurations
 #-------------------------------------------#
 
-<<<<<<< HEAD
+
 #For Testing pause before each start-dscconfiguration command
 
-HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
-pause
-Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
-
-PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
-pause
-Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
-
-#This guy is just for testing
-PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
-pause
-Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
-=======
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
 Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
@@ -115,5 +101,5 @@ Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
 #This guy is just for testing
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
 Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
->>>>>>> origin/master
+
 

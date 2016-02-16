@@ -84,13 +84,18 @@ Copy-Item -Path $DSCResourcePath -Recurse -Destination $DeployShare -Force
 #Generate and Push HyperV/VM Configurations
 #-------------------------------------------#
 
+#For Testing pause before each start-dscconfiguration command
+
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
+pause
 Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
 
 PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
+pause
 Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
 
 #This guy is just for testing
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $HVConfigs
+pause
 Start-DSCConfiguration -Path $HVConfigs -Force -Wait -Verbose
 

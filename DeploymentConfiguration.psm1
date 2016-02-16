@@ -1,4 +1,5 @@
-﻿function Get-DscResourceModulePath
+﻿#Resolve the module path for a specified DSCResourceModule
+function Get-DscResourceModulePath
 {
     param(
         [Parameter(Mandatory)]
@@ -8,8 +9,7 @@
     $dscResource.Module.ModuleBase
 }
 
-
-
+#Generator for Hyper-V Virtual Machines on a Hyper-V Host
 Configuration VirtualMachine
 {
     param (
@@ -52,6 +52,7 @@ Configuration VirtualMachine
     }
 }
 
+#Configure Hypervisor Server with basic requirements
 Configuration HyperVHost {
     param (
         [Parameter(Mandatory)]
@@ -74,6 +75,10 @@ Configuration HyperVHost {
     }
 }
 
+##########################
+#Start VM Configurations
+##########################
+
 Configuration PullServerVM {
     param (
         [Parameter(Mandatory)]
@@ -85,6 +90,22 @@ Configuration PullServerVM {
         }
     }
 }
+
+Configuration PullNodeVM {
+    param (
+        [Parameter(Mandatory)]
+        [String]$Role
+    )
+    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+        VirtualMachine PullNode {
+            VMConfig = $Node.DSCPullServer
+        }
+    }
+}
+
+##########################
+#Start guest configurations
+##########################
 
 Configuration PullServer {
     param (
@@ -138,17 +159,7 @@ Configuration PullServer {
     }
 }
 
-Configuration PullNodeVM {
-    param (
-        [Parameter(Mandatory)]
-        [String]$Role
-    )
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
-        VirtualMachine PullNode {
-            VMConfig = $Node.DSCPullServer
-        }
-    }
-}
+
 
 Configuration PullNode {
     param (

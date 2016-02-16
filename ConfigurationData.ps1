@@ -1,9 +1,12 @@
 ﻿param (
     #Host DSC Resources
     [Parameter(Mandatory)]
-    [String]$ScriptRoot,
+    [String]$ResourcePath,
     [Parameter(Mandatory)]
-    [String]$BaseVHDPath,
+    [String]$SourceVHDPath,
+    [Parameter(Mandatory)]
+    [String]$DeploymentPath,
+    [String]$NodeChildPath      = "Nodes",
     [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net"
 )
@@ -12,8 +15,15 @@ $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
 
 ##
 #ResourcePath - Where any ancilliary resource files will be located for copying to nodes
-#NodeConfigs - Subpath of ResourcePath where node .mof files are located
+#SourceVHDPath - The source VHD(x) file to generate VM's from
+#DeploymentPath - Where we will be storing VM's and VHD files on the Hyper-V Host
 ##
+
+#For ease of use using string formatting -f
+$ResourcePath += "\{0}"
+
+#Designate a Prefix for the name of the Hyper-V VMs
+$VMPrefix = "DEV-"
 
 #Generate GUIDs for Machines
 $PullServerGUID = [guid]::NewGuid()
@@ -21,7 +31,12 @@ $PullNodeGUID   = [guid]::NewGuid()
 $FirstDomainControllerGUID = [guid]::NewGuid()
 $SecondDomainControllerGUID = [guid]::NewGuid()
 
-#This can probably be set in NonNodeData
+Write-Debug -Message "PullServerGUID: $PullServerGUID"
+Write-Debug -Message "PullNodeGUID: $PullNodeGUID"
+Write-Debug -Message "FDCGUID: $FirstDomainControllerGUID"
+Write-Debug -Message "SDCGUID: $SecondDomainControllerGUID"
+
+#TODO: Determine if this is needed here or not
 $PullServerIP   = '172.16.10.150'
 
 @{
@@ -70,7 +85,6 @@ $PullServerIP   = '172.16.10.150'
             
             DomainAdminCreds    = ''
             DomainSafeModePW    = ''
-            
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -81,38 +95,36 @@ $PullServerIP   = '172.16.10.150'
             IPAddress           = '172.16.1.31'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
-            
-            
         }
         
         @{
             NodeName            = $HyperVHost
             Role                = "HyperVHost"
-            ResourcePath        = "$env:SystemDrive\Hyper-V\DSC\Resources\"
-            VHDParentPath       = $ScriptRoot -f "parentvhd.vhdx"
+            ResourcePath        = $ResourcePath
+            VHDParentPath       = $BaseVHDPath
             VHDGeneration       = "VHDX"
-            VHDDestinationPath  = "$BaseVHDPath\{0}.vhdx"
+            VHDDestinationPath  = "$DeploymentPath\{0}.vhdx"
             VHDPartitionNUmber  = 4
             SwitchName          = "Red-Hawk Production"
             SwitchType          = "External"
             VMState             = "Running"
             
             DSCPullServer = @{
-                MachineName     = "DSCPullServer"
+                MachineName     = "$($VMPrefix)DSCPullServer"
                 MemorySizeVM    = 2048MB
                 MACAddress      = '00155D8A54A0'
                 VMGeneration    = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $ScriptRoot -f "$PullServerGUID.mof";
+                        Source      = $ResourcePath -f "PullServer\$PullServerGUID.mof";
                         Destination = 'Windows\System32\Configuration\pending.mof'
                     }
                     @{
-                        Source      = $ScriptRoot -f "$PullServerGUID.meta.mof";
+                        Source      = $ResourcePath -f "PullServer\$PullServerGUID.meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
-                        Source      = $ScriptRoot -f 'pullserver_unattend.xml';
+                        Source      = $ResourcePath -f 'PullServer\pullserver_unattend.xml';
                         Destination = 'unattend.xml'
                     }
                     @{
@@ -120,39 +132,45 @@ $PullServerIP   = '172.16.10.150'
                         Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
                     }
                     @{
-                        Source      = $ScriptRoot -f 'Deploy\Nodes\*.mof';
+                        #Copy all node mof files to pull server
+                        Source      = $ResourcePath -f "$NodeChildPath\*.mof";
+                        Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
+                    }
+                    @{
+                        #Copy all node mof checksums to pull server
+                        Source      = $ResourcePath -f "$NodeChildPath\*.mof.checksum";
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
                     }
                 ) 
             }
             
             DSCPullNode = @{
-                MachineName     = "DSCPullNode"
+                MachineName     = "$($VMPrefix)DSCPullNode"
                 MemorySizeVM    = 2048MB
                 MACAddress      = "00155D8A54A5"
                 VMGeneration    = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $ScriptRoot -f 'pullnode.meta.mof';
+                        Source      = $ResourcePath -f "$NodeChildPath\pullnode.meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
-                        Source      = $ScriptRoot -f 'pullnode_unattend.xml';
+                        Source      = $ResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
                     }
                     @{
-                        Source      = $ScriptRoot -f 'startlcm.ps1'
+                        Source      = $ResourcePath -f 'startlcm.ps1'
                         Destination = 'Scripts\startlcm.ps1'
                     }
                     @{
-                        Source      = $ScriptRoot -f 'setup.cmd'
+                        Source      = $ResourcePath -f 'setup.cmd'
                         Destination = 'Scripts\setup.cmd'
                     }
                 )
             }
             
             FirstDomainController = @{
-                MachineName     = "FirstDomainController"
+                MachineName     = "$($VMPrefix)FirstDomainController"
                 MemorySizeVM    = 2048MB
                 #MACAddress      = "00155D8A54A9"
                 VMGeneration    = 2
@@ -162,11 +180,11 @@ $PullServerIP   = '172.16.10.150'
             }
             
             SecondDomainController = @{
-                MachineName     = "SecondDomainController"
+                MachineName     = "$($VMPrefix)SecondDomainController"
                 MemorySizeVM    = 2048MB
                 VMGeneration    = 2
                 VMFileCopy      = @(
-                    
+                    #Insert metaconfig for Domain Controller
                     
                 )
             }

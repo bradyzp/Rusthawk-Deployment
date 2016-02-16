@@ -46,42 +46,47 @@ param (
 #Sub folder containing any resource files required by the script - e.g. VHDx template files, generated DSC MOF files
 $ResourcePath    = Join-Path -Path $PSScriptRoot    -ChildPath "Resources"
 #Path to store generated node MOF files, these files are injected into VHDs to perform initial configuration tasks
-$NodeConfigs     = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
+$NodeConfigPath  = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
 #Path to store xHyperV Configuration files to be executed on the Hyper-V Host, these aren't referenced by any script except this when executing Start-DSCConfiguration
-$VMConfigs       = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
+$VMConfigPath    = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
 
-Remove-Item $DSCResourcePath -Force -Recurse
+#Clean up the resource path
+Remove-Item $ResourcePath -Force -Recurse
 
-if(-not (Test-Path $DSCResourcePath)) {
-    New-Item -Path $DSCResourcePath -ItemType Directory -Force
+#IF Statements are probably not necesarry, we just deleted everything here anyways
+if(-not (Test-Path $ResourcePath)) {
+    New-Item -Path $ResourcePath -ItemType Directory -Force
 }
 
-if(-not (Test-Path $NodeConfigs)) {
-    New-Item -Path $NodeConfigs -ItemType Directory -Force
+if(-not (Test-Path $NodeConfigPath)) {
+    New-Item -Path $NodeConfigPath -ItemType Directory -Force
+}
+if(-not (Test-Path $VMConfigPath)) {
+    New-Item -Path $VMConfigPath -ItemType Directory -Force
 }
 
 #---------------------------------#
 #Config Generation Block
 #---------------------------------#
-$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -ResourceBasePath $ResourcePath -NodeConfigs $NodeConfigs
+#Do we need to pass $NodeConfigPath to configdata? Don't think so. -No references to it, removing it.
+$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -ResourcePath $ResourcePath -Verbose -debug
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
 Import-Module $PSScriptRoot\DeploymentConfiguration.psm1
 
-PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $DSCResourcePath\PullServer
-
-PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigs
-PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigs
+PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
+PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
+PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 
 #Not Yet Implemented
-#DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigs
-#DomainController       -ConfigurationData $ConfigData -Role 'DC'           -OutPath $NodeConfigs
-#FileServer             -ConfigurationData $ConfigData -Role 'FileServer'   -OutPath $NodeConfigs
+#DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
+#DomainController       -ConfigurationData $ConfigData -Role 'DC'           -OutPath $NodeConfigPath
+#FileServer             -ConfigurationData $ConfigData -Role 'FileServer'   -OutPath $NodeConfigPath
 
 #Generate DSC Checksum for configs for DSC Pull
-New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
+New-DSCCheckSum -ConfigurationPath $NodeConfigPath -OutPath $NodeConfigPath
 
 #-------------------------------------------#
 #Generate and Push HyperV/VM Configurations
@@ -89,17 +94,19 @@ New-DSCCheckSum -ConfigurationPath $NodeConfigs -OutPath $NodeConfigs
 
 
 #For Testing pause before each start-dscconfiguration command
+Write-Host "Starting HV Configs"
 
 #Host Config - Ensure presense of Hyper-V Role
-HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
-Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
+HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+pause
 
 #Create the PullServerVM
-PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
-Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
+PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+pause
 
 #This guy is just for testing
-PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigs
-Start-DSCConfiguration -Path $VMConfigs -Force -Wait -Verbose
-
-
+PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+pause

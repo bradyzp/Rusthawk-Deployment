@@ -31,10 +31,13 @@ $PullNodeGUID   = [guid]::NewGuid()
 $FirstDomainControllerGUID = [guid]::NewGuid()
 $SecondDomainControllerGUID = [guid]::NewGuid()
 
-Write-Debug -Message "PullServerGUID: $PullServerGUID"
-Write-Debug -Message "PullNodeGUID: $PullNodeGUID"
-Write-Debug -Message "FDCGUID: $FirstDomainControllerGUID"
-Write-Debug -Message "SDCGUID: $SecondDomainControllerGUID"
+
+$Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
+
+Write-Verbose -Message "[$Script]: PullServerGUID: $PullServerGUID"
+Write-Verbose -Message "[$Script]: PullNodeGUID: $PullNodeGUID"
+Write-Verbose -Message "[$Script]: FDCGUID: $FirstDomainControllerGUID"
+Write-Verbose -Message "[$Script]: SDCGUID: $SecondDomainControllerGUID"
 
 #TODO: Determine if this is needed here or not
 $PullServerIP   = '172.16.10.150'

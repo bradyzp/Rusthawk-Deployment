@@ -50,31 +50,35 @@ $NodeConfigPath  = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
 #Path to store xHyperV Configuration files to be executed on the Hyper-V Host, these aren't referenced by any script except this when executing Start-DSCConfiguration
 $VMConfigPath    = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
 
-#Clean up the resource path
-Remove-Item $ResourcePath -Force -Recurse
+#Clean up the resource path (keep files in the root of directory - delete all subdirs)
+Get-ChildItem $ResourcePath | ? Attributes -eq 'Directory' | Remove-Item -Force -Recurse
+#Remove-Item $ResourcePath -Force -Recurse
 
-#IF Statements are probably not necesarry, we just deleted everything here anyways
 if(-not (Test-Path $ResourcePath)) {
     New-Item -Path $ResourcePath -ItemType Directory -Force
 }
 
-if(-not (Test-Path $NodeConfigPath)) {
-    New-Item -Path $NodeConfigPath -ItemType Directory -Force
-}
-if(-not (Test-Path $VMConfigPath)) {
-    New-Item -Path $VMConfigPath -ItemType Directory -Force
-}
+New-Item -Path $NodeConfigPath -ItemType Directory -Force
+New-Item -Path $VMConfigPath -ItemType Directory -Force
 
 #---------------------------------#
 #Config Generation Block
 #---------------------------------#
 #Do we need to pass $NodeConfigPath to configdata? Don't think so. -No references to it, removing it.
-$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" -ResourcePath $ResourcePath -Verbose -debug
+
+$SplatConfig = @{
+    "ResourcePath" = $ResourcePath
+    "SourceVHDPath" = "C:\SourceVHD.vhdx"
+    "DeploymentPath" = "C:\Deploy\"
+    "Verbose" = $True
+}
+
+$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" @SplatConfig
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
-Import-Module $PSScriptRoot\DeploymentConfiguration.psm1
+Import-Module $PSScriptRoot\DeploymentConfiguration.psm1 -Verbose:$False
 
 PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath

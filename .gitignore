@@ -1,4 +1,5 @@
 # Managed Object Format
 *.mof
 Testing/*
-Resources/*
+Resources/Nodes
+Resources/VirtualMachines

@@ -220,8 +220,6 @@ Configuration FirstDomainController {
         }
         xWaitForADDomain ForestWait {
             DependsOn = "[xADDomain]FirstDomain"
-
-
         }
 
     }

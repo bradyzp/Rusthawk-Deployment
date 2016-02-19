@@ -86,8 +86,8 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = ''
-            DomainSafeModePW    = ''
+            DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml')
+            DomainSafeModePW    = Import-CLIXML ($ResourcePath -f 'DCSafeModeCredentials.clixml')
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -98,6 +98,8 @@ $PullServerIP   = '172.16.10.150'
             IPAddress           = '172.16.1.31'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
+            
+            DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml')
         }
         
         @{

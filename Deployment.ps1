@@ -73,12 +73,12 @@ $SplatConfig = @{
     "Verbose" = $True
 }
 
-$ConfigData = & "$PSScriptRoot\ConfigurationData.ps1" @SplatConfig
+$ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" @SplatConfig
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
-Import-Module $PSScriptRoot\DeploymentConfiguration.psm1 -Verbose:$False
+Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:$False
 
 PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath

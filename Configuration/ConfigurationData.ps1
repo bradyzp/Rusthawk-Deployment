@@ -1,14 +1,15 @@
 ﻿param (
     #Host DSC Resources
     [Parameter(Mandatory)]
-    [String]$ResourcePath,
+    [string]$ResourcePath,
     [Parameter(Mandatory)]
-    [String]$SourceVHDPath,
+    [string]$SourceVHDPath,
     [Parameter(Mandatory)]
-    [String]$DeploymentPath,
-    [String]$NodeChildPath      = "Nodes",
-    [String]$HyperVHost         = "localhost",
-    [string]$NewDomainName      = "dev.rusthawk.net"
+    [string]$DeploymentPath,
+    [string]$NodeChildPath      = "Nodes",
+    [string]$HyperVHost         = "localhost",
+    [string]$NewDomainName      = "dev.rusthawk.net",
+    [string]$CertThumbprint     = "AllowUnencryptedTraffic"
 )
 
 $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
@@ -46,6 +47,8 @@ $PullServerIP   = '172.16.10.150'
     AllNodes = @(
         @{
             NodeName = "*"
+            CertificateFile = "C:\Dev\DSCEncryptionCert.cer"
+            Thumbprint = ''
         };
         @{
             NodeName                = $PullServerGUID
@@ -55,7 +58,7 @@ $PullServerIP   = '172.16.10.150'
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
-            CertificateThumbprint   = "AllowUnencryptedTraffic"
+            CertificateThumbprint   = $CertThumbprint
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
             State                   = "Started"

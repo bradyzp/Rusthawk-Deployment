@@ -122,7 +122,21 @@ $oobeSystem_pass = @"
 }
 
 function GenerateCredentials {
+    param (
+        [Parameter(Mandatory)]
+        [String]$CredPath
+    )
     
+    $RequiredCredentials = @{
+        #In the form of Username = Credfile.clixml
+        "rusthawk\Administrator" = "$CredPath\PDCCredentials.clixml"
+        "DCSafeModeCredentials"  = "$CredPath\DCSafeModeCredentials.clixml"
 
+    }
+
+    $RequiredCredentials.GetEnumerator() | % {
+        
+
+    }
 
 }

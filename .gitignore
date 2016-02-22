@@ -3,3 +3,4 @@
 Testing/*
 Resources/Nodes
 Resources/VirtualMachines
+*.clixml

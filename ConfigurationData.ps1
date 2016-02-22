@@ -8,7 +8,8 @@
     [String]$DeploymentPath,
     [String]$NodeChildPath      = "Nodes",
     [String]$HyperVHost         = "localhost",
-    [string]$NewDomainName      = "dev.rusthawk.net"
+    [string]$NewDomainName      = "dev.rusthawk.net",
+    [String]$CredPath
 )
 
 $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
@@ -21,6 +22,10 @@ $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
 
 #For ease of use using string formatting -f
 $ResourcePath += "\{0}"
+
+if(-not $CredPath) {
+    $CredPath = $ResourcePath
+}
 
 #Designate a Prefix for the name of the Hyper-V VMs
 $VMPrefix = "DEV-"
@@ -86,8 +91,8 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml')
-            DomainSafeModePW    = Import-CLIXML ($ResourcePath -f 'DCSafeModeCredentials.clixml')
+            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml')
+            DomainSafeModePW    = Import-CLIXML ($CredPath -f 'DCSafeModeCredentials.clixml')
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -99,7 +104,7 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml')
+            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml')
         }
         
         @{
@@ -180,7 +185,7 @@ $PullServerIP   = '172.16.10.150'
                 #MACAddress      = "00155D8A54A9"
                 VMGeneration    = 2
                 VMFileCopy      = @(
-                    #Insert metaconfig for Domain Controller
+                    #Insert metaconfig file for Domain Controller
                 )
             }
             
@@ -189,7 +194,7 @@ $PullServerIP   = '172.16.10.150'
                 MemorySizeVM    = 2048MB
                 VMGeneration    = 2
                 VMFileCopy      = @(
-                    #Insert metaconfig for Domain Controller
+                    #Insert metaconfig file for Domain Controller
                     
                 )
             }

@@ -9,7 +9,7 @@
     [String]$NodeChildPath      = "Nodes",
     [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net",
-    [String]$CredPath
+    [String]$CredPath,
     [string]$CertThumbprint     = "AllowUnencryptedTraffic"
 )
 
@@ -40,6 +40,7 @@ $SecondDomainControllerGUID = [guid]::NewGuid()
 
 $Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
 
+#VERBOSE Output - list generated GUIDs
 Write-Verbose -Message "[$Script]: PullServerGUID: $PullServerGUID"
 Write-Verbose -Message "[$Script]: PullNodeGUID: $PullNodeGUID"
 Write-Verbose -Message "[$Script]: FDCGUID: $FirstDomainControllerGUID"
@@ -48,12 +49,22 @@ Write-Verbose -Message "[$Script]: SDCGUID: $SecondDomainControllerGUID"
 #TODO: Determine if this is needed here or not
 $PullServerIP   = '172.16.10.150'
 
+Import-Module $PSScriptRoot/../DeploymentHelper.ps1
+
+#Generate selfsigned certificate to encrypt MOF Credentials
+#-Certificate is generated on the Host (Hyper-V)
+#Private key is exported to pfx file (protected by -PrivateKeyCred credential) to be copied to the node
+#Private key pfx needs to be imported on the node (Import-PFXCertificate) to enable decryption of MOF files encrypted using the pub key on the Hyper-V Host
+#Figure out how to import the pfx as it requires a password, how to do this safely?
+
+$Thumbprint = New-DSCCertificate -CertName "MOFCert" -OutputPath $ResourcePath -PrivateKeyCred (Import-Clixml -Path $CredPath\MOFCertCred.clixml)
+
 @{
     AllNodes = @(
         @{
             NodeName = "*"
-            CertificateFile = "C:\Dev\DSCEncryptionCert.cer"
-            Thumbprint = ''
+            CertificateFile = "$ResourcePath\MOFCert.cer"
+            Thumbprint = $Thumbprint
         };
         @{
             NodeName                = $PullServerGUID
@@ -63,7 +74,7 @@ $PullServerIP   = '172.16.10.150'
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
-            CertificateThumbprint   = $CertThumbprint
+            CertificateThumbprint   = $CertThumbprint   #This is the cert to encrypt pull server web traffic (not MOF file creds)
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
             State                   = "Started"
@@ -148,6 +159,10 @@ $PullServerIP   = '172.16.10.150'
                     @{
                         Source      = $ResourcePath -f 'setup.cmd';
                         Destination = 'Scripts\setup.cmd'
+                    }
+                    @{
+                        Source      = $ResourcePath -f 'MOFCert.pfx'
+                        Destination = 'Scripts\MOFCert.pfx'
                     }
                     @{
                         Source      = $DSCxWebService;

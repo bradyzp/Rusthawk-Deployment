@@ -5,37 +5,36 @@
 #>
 
 function GenerateCredentials {
+    
+
+
+}
+
+function New-DSCCertificate {
     param (
         [Parameter(Mandatory)]
-        [String]$CredPath
+        [string]$CertName,
+        [Parameter(Mandatory)]
+        [string]$OutputPath,
+        [ValidateSet('LocalMachine','CurrentUser')]
+        [string]$CertStore = "CurrentUser",
+        [Parameter(Mandatory)]
+        [pscredential]$PrivateKeyCred
     )
+
+    Get-ChildItem Cert:\$CertStore\My | ? Subject -eq "CN=$CertName" | Remove-Item -ErrorAction SilentlyContinue
+
+    New-SelfSignedCertificate -KeyUsage KeyEncipherment -KeyFriendlyName $CertName -CertStoreLocation "Cert:\$CertStore\My" -DnsName $CertName -Provider 'Microsoft Strong Cryptographic Provider' | out-null
+
+    $Thumbprint = Get-ChildItem Cert:\$CertStore\My | ? Subject -eq "CN=$CertName" | select -ExpandProperty Thumbprint
     
-    $RequiredCredentials = @{
-        #In the form of Username = Credfile.clixml
-        "rusthawk\Administrator" = "$CredPath\PDCCredentials.clixml"
-        "DCSafeModeCredentials"  = "$CredPath\DCSafeModeCredentials.clixml"
+    Export-PfxCertificate -Cert (Get-ChildItem Cert:\$CertStore\My)[0] -FilePath "$OutputPath\$CertName.pfx" -Password ($PrivateKeyCred.Password) | Out-Null
+    Export-Certificate -Cert (Get-ChildItem Cert:\$CertStore\My | ? Subject -eq "CN=$CertName")[0] -FilePath "$OutputPath\$CertName.cer" | Out-Null
 
-    }
+    #Remove the PrivateKey from host machine
+    Get-ChildItem Cert:\$CertStore\My | ? Subject -eq "CN=$CertName" | Remove-Item -ErrorAction SilentlyContinue | Out-Null
+    #Import the Public key into the store
+    Import-Certificate -FilePath "$OutputPath\$CertName.cer" -CertStoreLocation Cert:\$CertStore\My | Out-Null
 
-    $RequiredCredentials.GetEnumerator() | % {
-        
-
-    }
-
+    return $Thumbprint
 }
-
-function GenerateDSCCert {
-    $CertDNSName = 'DSCEncryptionCert'
-    $StoreLocation = "LocalMachine"
-
-    Get-ChildItem Cert:\$StoreLocation\My | ? Subject -eq "CN=$CertDNSName" | Remove-Item -ErrorAction SilentlyContinue
-
-    New-SelfSignedCertificate -KeyUsage KeyEncipherment -KeyFriendlyName $CertDNSName -CertStoreLocation Cert:\$StoreLocation\My -DnsName $CertDNSName -Provider 'Microsoft Strong Cryptographic Provider' | out-null
-
-
-    $Thumb = Get-ChildItem Cert:\$StoreLocation\My | ? Subject -eq "CN=$CertDNSName" | select -ExpandProperty Thumbprint
-    $Thumb
-    Export-PfxCertificate -Cert (Get-ChildItem Cert:\$StoreLocation\My)[0] -FilePath 'C:\Dev\dscencryptioncert.pfx' -Password ((Get-Credential -Message 'PKey Password' -UserName 'PFX').Password) | Out-Null
-    Export-Certificate -Cert (Get-ChildItem Cert:\$StoreLocation\My | ? Subject -eq "CN=$CertDNSName")[0] -FilePath 'C:\Dev\dscencryptioncert.cer' | Out-Null
-}
-GenerateDSCCert

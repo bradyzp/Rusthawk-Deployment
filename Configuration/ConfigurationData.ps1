@@ -5,19 +5,12 @@
     [Parameter(Mandatory)]
     [string]$SourceVHDPath,
     [Parameter(Mandatory)]
-<<<<<<< HEAD:ConfigurationData.ps1
     [String]$DeploymentPath,
     [String]$NodeChildPath      = "Nodes",
     [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net",
     [String]$CredPath
-=======
-    [string]$DeploymentPath,
-    [string]$NodeChildPath      = "Nodes",
-    [string]$HyperVHost         = "localhost",
-    [string]$NewDomainName      = "dev.rusthawk.net",
     [string]$CertThumbprint     = "AllowUnencryptedTraffic"
->>>>>>> origin/master:Configuration/ConfigurationData.ps1
 )
 
 $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase

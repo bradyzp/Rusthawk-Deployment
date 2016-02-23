@@ -5,10 +5,11 @@
     [Parameter(Mandatory)]
     [string]$SourceVHDPath,
     [Parameter(Mandatory)]
-    [string]$DeploymentPath,
-    [string]$NodeChildPath      = "Nodes",
-    [string]$HyperVHost         = "localhost",
+    [String]$DeploymentPath,
+    [String]$NodeChildPath      = "Nodes",
+    [String]$HyperVHost         = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net",
+    [String]$CredPath
     [string]$CertThumbprint     = "AllowUnencryptedTraffic"
 )
 
@@ -22,6 +23,10 @@ $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
 
 #For ease of use using string formatting -f
 $ResourcePath += "\{0}"
+
+if(-not $CredPath) {
+    $CredPath = $ResourcePath
+}
 
 #Designate a Prefix for the name of the Hyper-V VMs
 $VMPrefix = "DEV-"
@@ -89,8 +94,13 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
+<<<<<<< HEAD
             #DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
             #DomainSafeModePW    = Import-CLIXML ($ResourcePath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
+=======
+            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml')
+            DomainSafeModePW    = Import-CLIXML ($CredPath -f 'DCSafeModeCredentials.clixml')
+>>>>>>> origin/master
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -102,7 +112,11 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
+<<<<<<< HEAD
             #DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+=======
+            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml')
+>>>>>>> origin/master
         }
         
         @{
@@ -192,7 +206,7 @@ $PullServerIP   = '172.16.10.150'
                 #MACAddress      = "00155D8A54A9"
                 VMGeneration    = 2
                 VMFileCopy      = @(
-                    #Insert metaconfig for Domain Controller
+                    #Insert metaconfig file for Domain Controller
                 )
             }
             
@@ -201,7 +215,7 @@ $PullServerIP   = '172.16.10.150'
                 MemorySizeVM    = 2048MB
                 VMGeneration    = 2
                 VMFileCopy      = @(
-                    #Insert metaconfig for Domain Controller
+                    #Insert metaconfig file for Domain Controller
                     
                 )
             }

@@ -210,24 +210,30 @@ Configuration FirstDomainController {
     Import-DscResource -ModuleName xActiveDirectory -ModuleVersion '2.9.0.0'
 
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+        WindowsFeature DNS {
+            Ensure = "Present"
+            Name = "DNS"
+            IncludeAllSubFeature = $true
+        }
         WindowsFeature ADDS {
             Ensure = "Present"
             Name = "AD-Domain-Services"
             IncludeAllSubFeature = $true
+            DependsOn = "[WindowsFeature]DNS"
         }
         #Create the local user that will become the first domain administrator
         User DomainAdminUser {
             UserName = $Node.DomainCreds.Username
-            Password = $Node.DomainCreds.GetNetworkCredential().Password
+            Password = $Node.DomainCreds
             Ensure = "Present"
         }
         xADDomain FirstDomain {
-            DependsOn = "[WindowsFeature]ADDS"
             DomainName = $Node.DomainName
             #Credential to check for existance of domain
             DomainAdministratorCredential = $Node.DomainCreds
             SafeModeAdministratorPassword = $Node.DomainSafeModePW
             ParentDomainName = ''
+            DependsOn = "[WindowsFeature]ADDS"
         }
         xWaitForADDomain ForestWait {
             DependsOn = "[xADDomain]FirstDomain"

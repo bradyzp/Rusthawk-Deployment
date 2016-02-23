@@ -152,7 +152,7 @@ Configuration PullServer {
         LocalConfigurationManager {
             ConfigurationModeFrequencyMins = 30
             ConfigurationMode = "ApplyAndAutoCorrect"
-            
+            CertificateID = $Node.CertificateThumbprint
             RebootNodeIfNeeded = $true
             AllowModuleOverwrite = $true
         }
@@ -242,6 +242,7 @@ Configuration PullNodeLCM  {
         LocalConfigurationManager {
             RebootNodeIfNeeded = $True
             RefreshMode = "Pull"
+            CertificateID = $Node.CertificateThumbprint
             ConfigurationID = $Node.NodeName
             RefreshFrequencyMins = 30
             DownloadManagerName = "WebDownloadManager"

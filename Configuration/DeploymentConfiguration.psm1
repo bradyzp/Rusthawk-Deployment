@@ -66,6 +66,13 @@ Configuration HyperVHost {
             Ensure = "Present"
             Name = "Hyper-V"
         }
+
+        File DeploymentPath {
+            DestinationPath = $Node.Path
+            Ensure = "Present"
+            Force = $true
+            Type = "directory"
+        }
         xVMSwitch DeploySwitch {
             Name = $Node.SwitchName
             Type = $Node.SwitchType
@@ -84,6 +91,7 @@ Configuration PullServerVM {
         [Parameter(Mandatory)]
         [String]$Role
     )
+    #Role will always be HyperV in this case - evaluate streamlining this
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
         VirtualMachine PullServer {
             VMConfig = $Node.DSCPullServer
@@ -113,7 +121,10 @@ Configuration PullServer {
         [String]$Role
     )
 
-    Import-DscResource -ModuleName xNetworking, xComputerManagement,xPSDesiredStateConfiguration,PSDesiredStateConfiguration
+    Import-DscResource -ModuleName xNetworking
+    Import-DscResource -ModuleName xComputerManagement
+    Import-DscResource -ModuleName xPSDesiredStateConfiguration
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
 
     Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
 

@@ -32,12 +32,8 @@
         - xVMSwitch 
 #>
 
-#BRANCH: LocalExecution
-#Configure script for execution locall from hyper-v host - remove some complexity with pathing
-
-param (
-    #[String]$DeployShare = "\\hawkwing\dsc\Rusthawk-Deployment"
-    )
+#BRANCH: MASTER
+#Focus on getting single VM (Pull Server) up and running start to finish
 
 #---------------------------------#
 #Setup and Path/Dir Config
@@ -68,8 +64,8 @@ New-Item -Path $VMConfigPath -ItemType Directory -Force
 
 $SplatConfig = @{
     "ResourcePath" = $ResourcePath
-    "SourceVHDPath" = "C:\SourceVHD.vhdx"
-    "DeploymentPath" = "C:\Deploy\"
+    "SourceVHDPath" = "$ResourcePath\SourceVHD.vhdx"
+    "DeploymentPath" = "E:\HyperV\AutoDeploy"
     "Verbose" = $True
 }
 
@@ -81,8 +77,8 @@ Remove-Module DeploymentConfiguration -ErrorAction Ignore
 Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:$False
 
 PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
-PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
-PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
+#PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
+#PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 
 #Not Yet Implemented
 #DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
@@ -111,6 +107,6 @@ PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $
 pause
 
 #This guy is just for testing
-PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+#PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 #Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
-pause
+#pause

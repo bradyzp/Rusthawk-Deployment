@@ -89,8 +89,8 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml')
-            DomainSafeModePW    = Import-CLIXML ($ResourcePath -f 'DCSafeModeCredentials.clixml')
+            #DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+            #DomainSafeModePW    = Import-CLIXML ($ResourcePath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -102,7 +102,7 @@ $PullServerIP   = '172.16.10.150'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml')
+            #DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
         }
         
         @{
@@ -116,7 +116,8 @@ $PullServerIP   = '172.16.10.150'
             SwitchName          = "Red-Hawk Production"
             SwitchType          = "External"
             VMState             = "Running"
-            
+            Path                = $DeploymentPath
+
             DSCPullServer = @{
                 MachineName     = "$($VMPrefix)DSCPullServer"
                 MemorySizeVM    = 2048MB
@@ -132,8 +133,16 @@ $PullServerIP   = '172.16.10.150'
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
-                        Source      = $ResourcePath -f 'PullServer\pullserver_unattend.xml';
+                        Source      = $ResourcePath -f 'pullserver_unattend.xml';
                         Destination = 'unattend.xml'
+                    }
+                    @{
+                        Source      = $ResourcePath -f 'nodesetup.ps1';
+                        Destination = 'Scripts\nodesetup.ps1'
+                    }
+                    @{
+                        Source      = $ResourcePath -f 'setup.cmd';
+                        Destination = 'Scripts\setup.cmd'
                     }
                     @{
                         Source      = $DSCxWebService;

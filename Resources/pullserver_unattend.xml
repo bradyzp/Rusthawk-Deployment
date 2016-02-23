@@ -18,6 +18,7 @@
                     <CommandLine>%systemdrive%\Scripts\setup.cmd</CommandLine>
                     <Order>1</Order>
                     <RequiresUserInput>false</RequiresUserInput>
+                    <Description>Kickstart System Setup and initiate LCM</Description>
                 </SynchronousCommand>
             </FirstLogonCommands>
         </component>
@@ -36,5 +37,5 @@
             <ComputerName>DSCPullServer</ComputerName>
         </component>
     </settings>
-    <cpi:offlineImage cpi:source="" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
+    <cpi:offlineImage cpi:source="wim://red-hawk.net/share/data/3.images/1.server/windows/server2012r2/sources/install.wim#Windows Server 2012 R2 SERVERDATACENTERCORE" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
 </unattend>

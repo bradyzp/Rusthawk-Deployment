@@ -76,6 +76,7 @@ Configuration HyperVHost {
         xVMSwitch DeploySwitch {
             Name = $Node.SwitchName
             Type = $Node.SwitchType
+            NetAdapterName = "Port 2 - Red-Hawk.net (810)"
             Ensure = "Present"
             DependsOn = "[WindowsFeature]HyperV"
         }

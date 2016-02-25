@@ -28,6 +28,8 @@ if(-not $CredPath) {
     $CredPath = $ResourcePath
 }
 
+$BaseVHDPath = $ResourcePath -f 'basevhd.vhdx'
+
 #Designate a Prefix for the name of the Hyper-V VMs
 $VMPrefix = "DEV-"
 

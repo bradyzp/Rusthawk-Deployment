@@ -18,3 +18,6 @@ function StartLCM
 }
 
 StartLCM
+
+#Enable after testing, remove setup scripts etc
+#Remove-Item $env:SystemDrive\Scripts -Force -Recurse

@@ -128,6 +128,7 @@ Configuration PullServer {
     Import-DscResource -ModuleName xComputerManagement
     Import-DscResource -ModuleName xPSDesiredStateConfiguration
     Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName xWebAdministration
 
     Node $AllNodes.Where({$_.Role -eq 'PullServer'}).NodeName {
 
@@ -163,6 +164,14 @@ Configuration PullServer {
             #TODO: Implement credentials for operations
             #Credential    = ''
         }
+        xWebsite DefaultIISSite {
+            #Ensure the default website is removed from IIS
+            Name         = 'Default Web Site'
+            PhysicalPath = "$env:Systemroot\inetpub\wwwroot"
+            State        = "Stopped"
+            Ensure       = "Absent"
+            DependsOn    = "[xDSCWebService]PullServerEP"
+        }
         LocalConfigurationManager {
             ConfigurationModeFrequencyMins = 30
             ConfigurationMode = "ApplyAndAutoCorrect"
@@ -172,8 +181,6 @@ Configuration PullServer {
         }
     }
 }
-
-
 
 Configuration PullNode {
     param (

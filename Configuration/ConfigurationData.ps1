@@ -16,6 +16,7 @@
 $DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
 $DSCxComputer        = (Get-DSCResource -Name xComputer).Module.ModuleBase
 $DSCxNetworking      = (Get-DSCResource -Name xIPAddress).Module.ModuleBase
+$DSCxWebAdmin        = (Get-DSCResource -Name xWebsite).Module.ModuleBase
 
 ##
 #ResourcePath - Where any ancilliary resource files will be located for copying to nodes
@@ -74,7 +75,7 @@ $Thumbprint = 'ABCD'
         };
         @{
             NodeName                = $PullServerGUID
-            MachineName             = 'PullServer'
+            MachineName             = 'RHPullServer'
             Role                    = 'PullServer'
             DomainName              = $NewDomainName
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
@@ -178,6 +179,10 @@ $Thumbprint = 'ABCD'
                         Destination = 'Program Files\WindowsPowerShell\Modules\xNetworking'
                     }
                     @{
+                        Source      = $DSCxWebAdmin;
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xWebAdministration'
+                    }
+                    @{
                         #Copy all node mof files to pull server
                         Source      = $ResourcePath -f "$NodeChildPath\*.mof";
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
@@ -197,7 +202,7 @@ $Thumbprint = 'ABCD'
                 VMGeneration    = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $ResourcePath -f "$NodeChildPath\pullnode.meta.mof";
+                        Source      = $ResourcePath -f "$NodeChildPath\$PullNodeGUID.meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
@@ -206,7 +211,7 @@ $Thumbprint = 'ABCD'
                     }
                     @{
                         Source      = $ResourcePath -f 'startlcm.ps1'
-                        Destination = 'Scripts\startlcm.ps1'
+                        Destination = 'Scripts\nodesetup.ps1'
                     }
                     @{
                         Source      = $ResourcePath -f 'setup.cmd'

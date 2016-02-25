@@ -30,11 +30,11 @@
                     <Value>cQBzAGUAcgBXAFcAQAAjADMAcwBnADEAUABhAHMAcwB3AG8AcgBkAA==</Value>
                     <PlainText>false</PlainText>
                 </Password>
-                <LogonCount>10</LogonCount>
+                <LogonCount>1</LogonCount>
                 <Enabled>true</Enabled>
                 <Username>Administrator</Username>
             </AutoLogon>
-            <ComputerName>AutoPullServer</ComputerName>
+            <ComputerName>AutoPullNode</ComputerName>
         </component>
     </settings>
     <cpi:offlineImage cpi:source="" xmlns:cpi="urn:schemas-microsoft-com:cpi" />

@@ -51,11 +51,11 @@ Get-ChildItem $ResourcePath | ? Attributes -eq 'Directory' | Remove-Item -Force 
 #Remove-Item $ResourcePath -Force -Recurse
 
 if(-not (Test-Path $ResourcePath)) {
-    New-Item -Path $ResourcePath -ItemType Directory -Force
+    New-Item -Path $ResourcePath -ItemType Directory -Force | Out-Null
 }
 
-New-Item -Path $NodeConfigPath -ItemType Directory -Force
-New-Item -Path $VMConfigPath -ItemType Directory -Force
+New-Item -Path $NodeConfigPath -ItemType Directory -Force | Out-Null
+New-Item -Path $VMConfigPath -ItemType Directory -Force | Out-Null
 
 #---------------------------------#
 #Config Generation Block
@@ -69,14 +69,15 @@ $SplatConfig = @{
     "Verbose" = $True
 }
 
-$ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" @SplatConfig
+$ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" -ResourcePath $ResourcePath -SourceVHDPath "$ResourcePath\SourceVHD.vhdx"`
+                                                                    -DeploymentPath "E:\HyperV\AutoDeploy" -Verbose:$False
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
 Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:$False
 
-PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
+PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer -Verbose
 #PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
 #PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 
@@ -98,13 +99,12 @@ Write-Host "Starting HV Configs"
 
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
-pause
+Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+#pause
 
 #Create the PullServerVM
 PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
-pause
+Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 
 #This guy is just for testing
 #PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath

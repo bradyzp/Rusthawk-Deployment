@@ -14,7 +14,7 @@ function StartLCM
         "Arguments" = @{Flags = $flag}
         "Verbose" = $true
     }
-	Invoke-CimMethod @CimArguments
+	Invoke-CimMethod -Namespace "root/microsoft/windows/desiredstateconfiguration" -ClassName "MSFT_DSCLocalConfigurationManager" -MethodName "PerformRequiredConfigurationChecks" -Arguments @{Flags = $flag} -Verbose
 }
 
 StartLCM

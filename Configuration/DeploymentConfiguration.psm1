@@ -22,14 +22,14 @@ Configuration VirtualMachine
     {
         ParentPath           = $Node.VHDParentPath
         Name                 = $VMConfig.MachineName
-        Path                 = $Node.VHDDestinationPath -f $VMConfig.MachineName
+        Path                 = $Node.VHDDestinationPath
         Generation           = $Node.VHDGeneration
         Ensure               = "Present"
     }
     cVHDFile FileCopy
     {
         PartitionNumber = $Node.VHDPartitionNumber
-        VhdPath = $Node.VHDDestinationPath -f $VMConfig.MachineName
+        VhdPath = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
         FileDirectory = $VMConfig.VMFileCopy | % {
             MSFT_xFileDirectory {
                 SourcePath = $_.source
@@ -42,13 +42,15 @@ Configuration VirtualMachine
     xVMHyperV VirtualMachine
     {
         Name                 = $VMConfig.MachineName
-        VhDPath              = $Node.VHDDestinationPath -f $VMConfig.MachineName
+        Path                 = $Node.Path
+        VhDPath              = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
         SwitchName           = $Node.SwitchName
         State                = $Node.VMState
         StartupMemory        = $VMConfig.MemorySizeVM
         MACAddress           = $VMConfig.MACAddress
         Generation           = $VMConfig.VMGeneration
         DependsOn            = '[cVHDFile]FileCopy'
+        
     }
 }
 
@@ -61,7 +63,7 @@ Configuration HyperVHost {
 
     Import-DSCResource -ModuleName xHyper-V, PSDesiredStateConfiguration
 
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         WindowsFeature HyperV {
             Ensure = "Present"
             Name = "Hyper-V"
@@ -93,7 +95,7 @@ Configuration PullServerVM {
         [String]$Role
     )
     #Role will always be HyperV in this case - evaluate streamlining this
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         VirtualMachine PullServer {
             VMConfig = $Node.DSCPullServer
         }
@@ -105,7 +107,7 @@ Configuration PullNodeVM {
         [Parameter(Mandatory)]
         [String]$Role
     )
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         VirtualMachine PullNode {
             VMConfig = $Node.DSCPullServer
         }
@@ -127,7 +129,7 @@ Configuration PullServer {
     Import-DscResource -ModuleName xPSDesiredStateConfiguration
     Import-DscResource -ModuleName PSDesiredStateConfiguration
 
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+    Node $AllNodes.Where({$_.Role -eq 'PullServer'}).NodeName {
 
         WindowsFeature DSCService {
             Ensure = "Present"
@@ -182,7 +184,7 @@ Configuration PullNode {
     #We will just be creating a sample configuration for testing Pull config
     Import-DSCResource -ModuleName xNetworking, xComputerManagement,PSDesiredStateConfiguration
     
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         WindowsFeature TestFeature {
             Ensure = "Present"
             Name = "DNS"
@@ -210,7 +212,7 @@ Configuration FirstDomainController {
     Import-DscResource -ModuleName xComputerManagement
     Import-DscResource -ModuleName xActiveDirectory -ModuleVersion '2.9.0.0'
 
-    Node $AllNodes.Where{$_.Role -eq $Role}.NodeName {
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         WindowsFeature DNS {
             Ensure = "Present"
             Name = "DNS"
@@ -250,7 +252,7 @@ Configuration PullNodeLCM  {
         [Parameter(Mandatory)]
         [String]$RefreshMode
     )
-    Node $AllNodes.Where{$_.RefreshMode -eq $RefreshMode}.NodeName {
+    Node $AllNodes.Where({$_.RefreshMode -eq $RefreshMode}).NodeName {
         LocalConfigurationManager {
             RebootNodeIfNeeded = $True
             RefreshMode = "Pull"

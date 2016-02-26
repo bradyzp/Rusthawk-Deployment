@@ -93,7 +93,7 @@ $Thumbprint = 'ABCD'
         }
         @{
             NodeName                = $PullNodeGUID
-            MachineName             = 'PullNode'
+            MachineName             = 'RHPullNode'
             Role                    = 'PullNode'
             DomainName              = $NewDomainName
             StaticIP                = $True
@@ -159,30 +159,6 @@ $Thumbprint = 'ABCD'
                         Destination = 'unattend.xml'
                     }
                     @{
-                        Source      = $ResourcePath -f 'nodesetup.ps1';
-                        Destination = 'Scripts\nodesetup.ps1'
-                    }
-                    @{
-                        Source      = $ResourcePath -f 'setup.cmd';
-                        Destination = 'Scripts\setup.cmd'
-                    }
-                    @{
-                        Source      = $DSCxWebService;
-                        Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
-                    }
-                    @{
-                        Source      = $DSCxComputer;
-                        Destination = 'Program Files\WindowsPowerShell\Modules\xComputerManagement'
-                    }
-                    @{
-                        Source      = $DSCxNetworking;
-                        Destination = 'Program Files\WindowsPowerShell\Modules\xNetworking'
-                    }
-                    @{
-                        Source      = $DSCxWebAdmin;
-                        Destination = 'Program Files\WindowsPowerShell\Modules\xWebAdministration'
-                    }
-                    @{
                         #Copy all node mof files to pull server
                         Source      = $ResourcePath -f "$NodeChildPath\*.mof";
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
@@ -191,6 +167,14 @@ $Thumbprint = 'ABCD'
                         #Copy all node mof checksums to pull server
                         Source      = $ResourcePath -f "$NodeChildPath\*.mof.checksum";
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
+                    }
+                    @{
+                        Source      = $DSCxWebService;
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
+                    }
+                    @{
+                        Source      = $DSCxWebAdmin;
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xWebAdministration'
                     }
                 ) 
             }
@@ -208,14 +192,6 @@ $Thumbprint = 'ABCD'
                     @{
                         Source      = $ResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
-                    }
-                    @{
-                        Source      = $ResourcePath -f 'startlcm.ps1'
-                        Destination = 'Scripts\nodesetup.ps1'
-                    }
-                    @{
-                        Source      = $ResourcePath -f 'setup.cmd'
-                        Destination = 'Scripts\setup.cmd'
                     }
                 )
             }
@@ -241,5 +217,25 @@ $Thumbprint = 'ABCD'
             }
         }
     );
+    NonNodeData = @{
+        CommonFiles = @(
+            @{
+                Source      = $DSCxComputer
+                Destination = 'Program Files\WindowsPowerShell\Modules\xComputerManagement'
+            }
+            @{
+                Source      = $DSCxNetworking
+                Destination = 'Program Files\WindowsPowerShell\Modules\xNetworking'
+            }
+            @{
+                Source      = $ResourcePath -f 'nodesetup.ps1';
+                Destination = 'Scripts\nodesetup.ps1'
+            }
+            @{
+                Source      = $ResourcePath -f 'setup.cmd';
+                Destination = 'Scripts\setup.cmd'
+            }
+        )
+    }
    
 }

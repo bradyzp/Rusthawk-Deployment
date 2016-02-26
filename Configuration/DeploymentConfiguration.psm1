@@ -26,14 +26,16 @@ Configuration VirtualMachine
         Generation           = $Node.VHDGeneration
         Ensure               = "Present"
     }
+
+    $AllFiles = $VMConfig.VMFileCopy + $ConfigurationData.NonNodeData.CommonFiles
     cVHDFile FileCopy
     {
         PartitionNumber = $Node.VHDPartitionNumber
         VhdPath = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
-        FileDirectory = $VMConfig.VMFileCopy | % {
+        FileDirectory = $AllFiles | % {
             MSFT_xFileDirectory {
-                SourcePath = $_.source
-                DestinationPath = $_.destination
+                SourcePath = $_.Source
+                DestinationPath = $_.Destination
             }
         }
         DependsOn = "[xVHD]VHD"
@@ -109,7 +111,7 @@ Configuration PullNodeVM {
     )
     Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         VirtualMachine PullNode {
-            VMConfig = $Node.DSCPullServer
+            VMConfig = $Node.DSCPullNode
         }
     }
 }

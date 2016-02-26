@@ -99,14 +99,15 @@ Write-Host "Starting HV Configs"
 
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 #pause
 
 #Create the PullServerVM
 PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+#Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+pause
 
 #This guy is just for testing
-#PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 #Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 #pause

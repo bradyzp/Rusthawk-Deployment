@@ -218,6 +218,8 @@ $Thumbprint = 'ABCD'
         }
     );
     NonNodeData = @{
+        PullServerAddress = $PullServerIP
+        PullServerPort = 8080
         CommonFiles = @(
             @{
                 Source      = $DSCxComputer
@@ -234,6 +236,10 @@ $Thumbprint = 'ABCD'
             @{
                 Source      = $ResourcePath -f 'setup.cmd';
                 Destination = 'Scripts\setup.cmd'
+            }
+            @{
+                Source      = $ResourcePath -f 'Certificates\rusthawk-root-ca_RUSTHAWK-ROOT-CA.crt'
+                Destination = 'Scripts\'
             }
         )
     }

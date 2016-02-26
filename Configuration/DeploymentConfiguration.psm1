@@ -155,7 +155,7 @@ Configuration PullServer {
             xIPAddress PullServerStaticIP {
                 IPAddress       = $Node.IPAddress
                 SubnetMask      = $Node.SubnetMask
-                InterfaceAlias  = "Ethernet*"
+                InterfaceAlias  = "Ethernet"
                 AddressFamily   = $Node.AddressFamily
             }
         } #Else rely on DHCP
@@ -270,7 +270,7 @@ Configuration PullNodeLCM  {
             RefreshFrequencyMins = 30
             DownloadManagerName = "WebDownloadManager"
             #Add variable or dns name property for pull server
-            DownloadManagerCustomData = @{ServerUrl="http://$($NonNodeData.PullServerAddress)`:$($NonNodeData.PullServerPort)/psdscpullserver.svc";
+            DownloadManagerCustomData = @{ServerUrl="http://$($ConfigurationData.NonNodeData.PullServerAddress)`:$($ConfigurationData.NonNodeData.PullServerPort)/psdscpullserver.svc";
                                             AllowUnsecureConnection = 'true'
                                             }
         }

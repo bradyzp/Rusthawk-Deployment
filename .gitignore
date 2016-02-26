@@ -5,3 +5,4 @@ Resources/Nodes
 Resources/VirtualMachines
 *.clixml
 *.vhdx
+*.crt

@@ -19,5 +19,10 @@ function StartLCM
 
 StartLCM
 
+Import-Certificate -FilePath "$env:SystemDrive\Scripts\rootcert.crt" -CertStoreLocation "Cert:\LocalMachine\root"
+
+pause
+
+Remove-Item "$env:SystemDrive\Scripts" -Force -Recurse
 #Enable after testing, remove setup scripts etc
 #Remove-Item $env:SystemDrive\Scripts -Force -Recurse

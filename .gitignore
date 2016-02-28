@@ -6,3 +6,4 @@ Resources/VirtualMachines
 *.clixml
 *.vhdx
 *.crt
+Resource/Certificates

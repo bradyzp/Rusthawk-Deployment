@@ -31,7 +31,7 @@ function Select-ModuleBase {
         $ResourceBase = ($ResourceInfo | Where-Object Name -eq $Name).Module.ModuleBase
     }
     else {
-        $ResourceBase = ($ResourceInfo | Where-Object Module -eq $Module).Module.ModuleBase
+        $ResourceBase = ($ResourceInfo | Where-Object Module -Like $Module | Select -First 1).Module.ModuleBase
     }
     $ResourceBase
 }
@@ -40,6 +40,7 @@ $xWebService      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xDSCWeb
 $xComputer        = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xComputer'
 $xNetworking      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xNetworking'
 $xWebAdmin        = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xWebAdministration'
+$xCertificate     = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xCertificate'
 
 ##
 #ResourcePath - Where any ancilliary resource files will be located for copying to nodes
@@ -57,7 +58,7 @@ if(-not $CredPath) {
 $BaseVHDPath = $ResourcePath -f 'basevhd.vhdx'
 
 #Designate a Prefix for the name of the Hyper-V VMs
-$VMPrefix = "DEV-"
+$VMPrefix = "DEV-DSC-"
 
 #Generate GUIDs for Machines
 #Make sure that these are passed as strings or it breaks EVERYTHING!!!!
@@ -84,15 +85,16 @@ $PullServerIP   = '172.16.10.150'
 #Private key pfx needs to be imported on the node (Import-PFXCertificate) to enable decryption of MOF files encrypted using the pub key on the Hyper-V Host
 #Figure out how to import the pfx as it requires a password, how to do this safely?
 
+#MOF Encryption Certificate Thumbprint
 #$Thumbprint = New-DSCCertificate -CertName "MOFCert" -OutputPath ($ResourcePath -f '') -PrivateKeyCred (Import-Clixml -Path ($CredPath -f 'MOFCertCred.clixml'))
-$Thumbprint = 'ABCD'
+$MOFThumbprint = '583BB5FD77471A2A2644FCCD2751B360B4BFF980'
 
 @{
     AllNodes = @(
         @{
             NodeName = "*"
-            CertificateFile = "$ResourcePath\MOFCert.cer"
-            Thumbprint = $PullCertThumbprint
+            CertificateFile = $ResourcePath -f "Certificates\MOFCert.cer"
+            Thumbprint      = $MOFThumbprint
         };
         @{
             NodeName                = $PullServerGUID
@@ -102,7 +104,10 @@ $Thumbprint = 'ABCD'
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
-            CertificateThumbprint   = $PullCertThumbprint
+            CertificateThumbprint   = '12E33D877D27546998AA05056ADB0DDCF31A7763'
+            #PSCredential used to import the PFX Certificate (password)
+            CertificateCredential   = Import-Clixml ($ResourcePath -f "PSDSCCertCred.clixml")
+            CertificatePath         = $ResourcePath -f "Certificates\PSDSCPullServerCert.pfx"
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
             State                   = "Started"
@@ -190,12 +195,20 @@ $Thumbprint = 'ABCD'
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
                     }
                     @{
+                        Source      = $ResourcePath -f 'Certificates\PSDSCPullServer.pfx';
+                        Destination = 'Scripts\PSDSCPullServer.pfx'
+                    }
+                    @{
                         Source      = $xWebService;
                         Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
                     }
                     @{
                         Source      = $xWebAdmin;
                         Destination = 'Program Files\WindowsPowerShell\Modules\xWebAdministration'
+                    }
+                    @{
+                        Source      = $xCertificate;
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xCertificate'
                     }
                 ) 
             }
@@ -214,6 +227,7 @@ $Thumbprint = 'ABCD'
                         Source      = $ResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
                     }
+                    
                 )
             }
             

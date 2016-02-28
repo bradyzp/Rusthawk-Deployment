@@ -47,8 +47,8 @@ $NodeConfigPath  = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
 $VMConfigPath    = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
 
 #Clean up the resource path (keep files in the root of directory - delete all subdirs)
-Get-ChildItem $ResourcePath | ? Attributes -eq 'Directory' | Remove-Item -Force -Recurse
-#Remove-Item $ResourcePath -Force -Recurse
+Get-ChildItem $ResourcePath | ? {($_.Attributes -eq 'Directory') -and ($_.BaseName -ne 'Certificates')} | Remove-Item -Force -Recurse
+
 
 if(-not (Test-Path $ResourcePath)) {
     New-Item -Path $ResourcePath -ItemType Directory -Force | Out-Null
@@ -69,15 +69,17 @@ $SplatConfig = @{
     "Verbose" = $True
 }
 
+$PullServerThumbprint = '12E33D877D27546998AA05056ADB0DDCF31A7763'
+
 $ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" -ResourcePath $ResourcePath -SourceVHDPath "$ResourcePath\SourceVHD.vhdx"`
-                                                                    -DeploymentPath "E:\HyperV\AutoDeploy" -Verbose:$False
+                                                                    -DeploymentPath "E:\HyperV\AutoDeploy" -PullCertThumbprint $PullServerThumbprint
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
 Remove-Module DeploymentConfiguration -ErrorAction Ignore
 
 Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:$False
 
-PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer -Verbose
+PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
 PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 
@@ -94,7 +96,7 @@ New-DSCCheckSum -ConfigurationPath $NodeConfigPath -OutPath $NodeConfigPath
 #-------------------------------------------#
 
 #For Testing pause before each start-dscconfiguration command
-Write-Host "Starting HV Configs"
+Write-Warning "Pushing Hyper-V Configs"
 
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath

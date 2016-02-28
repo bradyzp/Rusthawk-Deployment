@@ -131,12 +131,22 @@ Configuration PullServer {
     Import-DscResource -ModuleName xPSDesiredStateConfiguration
     Import-DscResource -ModuleName PSDesiredStateConfiguration
     Import-DscResource -ModuleName xWebAdministration
+    Import-DscResource -ModuleName xCertificate
 
     Node $AllNodes.Where({$_.Role -eq 'PullServer'}).NodeName {
 
         WindowsFeature DSCService {
             Ensure = "Present"
             Name = "DSC-Service"
+        }
+        xPfxImport DSCServerCert {
+            Path = ''
+            Thumbprint = '12E33D877D27546998AA05056ADB0DDCF31A7763'
+            Credential = $Node.CertificateCredential
+            Location   = 'LocalMachine'
+            Store      = 'My'
+            Exportable = $false
+
         }
         xDSCWebService PullServerEP {
             EndpointName        = "DSCPullServer"
@@ -177,7 +187,8 @@ Configuration PullServer {
         LocalConfigurationManager {
             ConfigurationModeFrequencyMins = 30
             ConfigurationMode = "ApplyAndAutoCorrect"
-            CertificateID = $Node.CertificateThumbprint
+            #Thumbprint of certificate used for MOF encryption
+            CertificateID = $Node.Thumbprint
             RebootNodeIfNeeded = $true
             AllowModuleOverwrite = $true
         }
@@ -265,13 +276,13 @@ Configuration PullNodeLCM  {
         LocalConfigurationManager {
             RebootNodeIfNeeded = $True
             RefreshMode = "Pull"
-            CertificateID = $Node.CertificateThumbprint
+            CertificateID = $Node.Thumbprint
             ConfigurationID = $Node.NodeName
             RefreshFrequencyMins = 30
             DownloadManagerName = "WebDownloadManager"
             #Add variable or dns name property for pull server
             DownloadManagerCustomData = @{ServerUrl="http://$($ConfigurationData.NonNodeData.PullServerAddress)`:$($ConfigurationData.NonNodeData.PullServerPort)/psdscpullserver.svc";
-                                            AllowUnsecureConnection = 'true'
+                                            AllowUnsecureConnection = 'false'
                                             }
         }
     }

@@ -7,3 +7,5 @@ Resources/VirtualMachines
 *.vhdx
 *.crt
 Resource/Certificates
+*.cer
+Resources/Certificates/PSDSCPullServerCert.pfx

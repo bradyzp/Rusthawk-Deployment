@@ -22,9 +22,9 @@ function Select-ModuleBase {
     param (
         [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
         [Microsoft.PowerShell.DesiredStateConfiguration.DscResourceInfo[]]$ResourceInfo,
-        [Parameter(ParameterSetName='DSCName', Position=1)]
+        [Parameter(ParameterSetName='DSCName')]
         [string]$Name,
-        [Parameter(ParameterSetName='DSCModule', Positiion=1)]
+        [Parameter(ParameterSetName='DSCModule')]
         [string]$Module
     )
     if($Name) {

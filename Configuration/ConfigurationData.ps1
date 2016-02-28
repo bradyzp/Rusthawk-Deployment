@@ -13,10 +13,33 @@
     [string]$PullCertThumbprint     = "AllowUnencryptedTraffic"
 )
 
-$DSCxWebService      = (Get-DSCResource -Name xDSCWebService).Module.ModuleBase
-$DSCxComputer        = (Get-DSCResource -Name xComputer).Module.ModuleBase
-$DSCxNetworking      = (Get-DSCResource -Name xIPAddress).Module.ModuleBase
-$DSCxWebAdmin        = (Get-DSCResource -Name xWebsite).Module.ModuleBase
+Import-Module $PSScriptRoot/../DeploymentHelper.ps1
+
+#Run this once - saves time over multiple calls
+$DSCResources = Get-DscResource
+
+function Select-ModuleBase {
+    param (
+        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
+        [dscresourceinfo[]]$ResourceInfo,
+        [Parameter(ParameterSetName='DSCName', Position=1)]
+        [string]$Name,
+        [Parameter(ParameterSetName='DSCModule', Positiion=1)]
+        [string]$Module
+    )
+    if($Name) {
+        $ResourceBase = ($ResourceInfo | Where-Object Name -eq $Name).Module.ModuleBase
+    }
+    else {
+        $ResourceBase = ($ResourceInfo | Where-Object Module -eq $Module).Module.ModuleBase
+    }
+    $ResourceBase
+}
+
+$xWebService      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xDSCWebService'
+$xComputer        = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xComputer'
+$xNetworking      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xNetworking'
+$xWebAdmin        = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xWebAdministration'
 
 ##
 #ResourcePath - Where any ancilliary resource files will be located for copying to nodes
@@ -54,8 +77,6 @@ $Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
 
 #TODO: Determine if this is needed here or not
 $PullServerIP   = '172.16.10.150'
-
-Import-Module $PSScriptRoot/../DeploymentHelper.ps1
 
 #Generate selfsigned certificate to encrypt MOF Credentials
 #-Certificate is generated on the Host (Hyper-V)
@@ -169,11 +190,11 @@ $Thumbprint = 'ABCD'
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Configuration'                        
                     }
                     @{
-                        Source      = $DSCxWebService;
+                        Source      = $xWebService;
                         Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
                     }
                     @{
-                        Source      = $DSCxWebAdmin;
+                        Source      = $xWebAdmin;
                         Destination = 'Program Files\WindowsPowerShell\Modules\xWebAdministration'
                     }
                 ) 
@@ -222,11 +243,11 @@ $Thumbprint = 'ABCD'
         PullServerPort = 8080
         CommonFiles = @(
             @{
-                Source      = $DSCxComputer
+                Source      = $xComputer
                 Destination = 'Program Files\WindowsPowerShell\Modules\xComputerManagement'
             }
             @{
-                Source      = $DSCxNetworking
+                Source      = $xNetworking
                 Destination = 'Program Files\WindowsPowerShell\Modules\xNetworking'
             }
             @{
@@ -239,7 +260,7 @@ $Thumbprint = 'ABCD'
             }
             @{
                 Source      = $ResourcePath -f 'Certificates\rusthawk-root-ca_RUSTHAWK-ROOT-CA.crt'
-                Destination = 'Scripts\'
+                Destination = 'Scripts\rootcert.crt'
             }
         )
     }

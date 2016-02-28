@@ -21,7 +21,7 @@ $DSCResources = Get-DscResource
 function Select-ModuleBase {
     param (
         [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
-        [dscresourceinfo[]]$ResourceInfo,
+        [Microsoft.PowerShell.DesiredStateConfiguration.DscResourceInfo[]]$ResourceInfo,
         [Parameter(ParameterSetName='DSCName', Position=1)]
         [string]$Name,
         [Parameter(ParameterSetName='DSCModule', Positiion=1)]

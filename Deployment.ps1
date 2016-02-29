@@ -14,7 +14,7 @@
 .NOTES
     Hyper-V Host and BaseVhd must have at least 'Windows Management Framework 5.0 Experimental July 2014 (KB2969050)' installed to run this example.  
      
-    List of DSC resources that should be present on the system:
+    List of DSC resources that should be present on the system: (Not current)
         - xIPAddress
         - xFirewall
         - xComputer
@@ -32,8 +32,9 @@
         - xVMSwitch 
 #>
 
-#BRANCH: MASTER
-#Focus on getting single VM (Pull Server) up and running start to finish
+#REQUIRES -Version 5
+
+#BRANCH MASTER
 
 #---------------------------------#
 #Setup and Path/Dir Config
@@ -46,9 +47,8 @@ $NodeConfigPath  = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
 #Path to store xHyperV Configuration files to be executed on the Hyper-V Host, these aren't referenced by any script except this when executing Start-DSCConfiguration
 $VMConfigPath    = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
 
-#Clean up the resource path (keep files in the root of directory - delete all subdirs)
+#Clean up the resource path (keep files in the root of directory - delete all subdirs except Certificates)
 Get-ChildItem $ResourcePath | ? {($_.Attributes -eq 'Directory') -and ($_.BaseName -ne 'Certificates')} | Remove-Item -Force -Recurse
-
 
 if(-not (Test-Path $ResourcePath)) {
     New-Item -Path $ResourcePath -ItemType Directory -Force | Out-Null
@@ -60,22 +60,19 @@ New-Item -Path $VMConfigPath -ItemType Directory -Force | Out-Null
 #---------------------------------#
 #Config Generation Block
 #---------------------------------#
-#Do we need to pass $NodeConfigPath to configdata? Don't think so. -No references to it, removing it.
-
-$SplatConfig = @{
-    "ResourcePath" = $ResourcePath
-    "SourceVHDPath" = "$ResourcePath\SourceVHD.vhdx"
-    "DeploymentPath" = "E:\HyperV\AutoDeploy"
-    "Verbose" = $True
+$ConfigDataParams = @{
+    "ResourcePath"       = $ResourcePath
+    "SourceVHDPath"      = "$ResourcePath\SourceVHD.vhdx"
+    "DeploymentPath"     = "E:\HyperV\AutoDeploy"
+    "PullCertThumbprint" = '12E33D877D27546998AA05056ADB0DDCF31A7763'
+    "Verbose" = $False
 }
 
-$PullServerThumbprint = '12E33D877D27546998AA05056ADB0DDCF31A7763'
+$ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" @ConfigDataParams
 
-$ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" -ResourcePath $ResourcePath -SourceVHDPath "$ResourcePath\SourceVHD.vhdx"`
-                                                                    -DeploymentPath "E:\HyperV\AutoDeploy" -PullCertThumbprint $PullServerThumbprint
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
-Remove-Module DeploymentConfiguration -ErrorAction Ignore
+Remove-Module DeploymentConfiguration -ErrorAction SilentlyContinue
 
 Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:$False
 
@@ -96,7 +93,7 @@ New-DSCCheckSum -ConfigurationPath $NodeConfigPath -OutPath $NodeConfigPath
 #-------------------------------------------#
 
 #For Testing pause before each start-dscconfiguration command
-Write-Warning "Pushing Hyper-V Configs"
+Write-Information -MessageData "Pushing Hyper-V Configs"
 
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
@@ -108,6 +105,6 @@ PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 #pause
 
-#This guy is just for testing
+#This guy is just for testing that our pull server works
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose

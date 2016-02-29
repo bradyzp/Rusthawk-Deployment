@@ -4,51 +4,30 @@
 
 #>
 
+
+
+function Select-ModuleBase {
+    param (
+        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
+        [Microsoft.PowerShell.DesiredStateConfiguration.DscResourceInfo[]]$ResourceInfo,
+        [Parameter(ParameterSetName='DSCName')]
+        [string]$Name,
+        [Parameter(ParameterSetName='DSCModule')]
+        [string]$Module
+    )
+    if($Name) {
+        $ResourceBase = ($ResourceInfo | Where-Object Name -eq $Name).Module.ModuleBase
+    }
+    else {
+        $ResourceBase = ($ResourceInfo | Where-Object Module -Like $Module | Select -First 1).Module.ModuleBase
+    }
+    $ResourceBase
+}
+
 function GenerateCredentials {
     
 
 
-}
-
-<#
-    .SYNOPSIS
-    Return a list of hashtables <Module Name> = <Module Base Path> for a specified DSC Resource Module Name
-#>
-function Get-DSCModulePath {
-    param (
-        [Parameter(Mandatory=$true, Position=0,ValueFromPipeline=$true)]
-        [string[]]$ModuleName
-    )
-    
-    $DSCResource = Get-DscResource
-    $ReturnList = @()
-
-    $ModuleName | foreach-object {
-        $Resource = $DSCResource | Where-Object Module -Like $_ | Select -First 1
-        if(-not $Resource) {
-            Write-Error -Message "DSC Module $_ not found" -Category ResourceUnavailable
-        }
-        else {
-            $ReturnList += @{Module = $_; Path = $Resource.Module.ModuleBase}
-        }
-    }
-    $ReturnList
-}
-
-function Get-DSCModuleBasePath {
-    param (
-        [Parameter(Mandatory=$true,Position=0)]
-        [string]$Name,
-        [switch]$ByModule = $false
-    )
-    if($ByModule) {
-        $resource = (Get-DscResource -Module $Name).Module.ModuleBase
-
-    }
-    else {
-        $resource = (Get-DscResource -Name $Name).Module.ModuleBase
-    }
-    $resource
 }
 
 function New-DSCCertificate {

@@ -15,26 +15,7 @@
 
 Import-Module $PSScriptRoot/../DeploymentHelper.ps1
 
-#Run this once - saves time over multiple calls
-$DSCResources = Get-DscResource
-
-function Select-ModuleBase {
-    param (
-        [Parameter(Mandatory=$true,Position=0,ValueFromPipeline=$true)]
-        [Microsoft.PowerShell.DesiredStateConfiguration.DscResourceInfo[]]$ResourceInfo,
-        [Parameter(ParameterSetName='DSCName')]
-        [string]$Name,
-        [Parameter(ParameterSetName='DSCModule')]
-        [string]$Module
-    )
-    if($Name) {
-        $ResourceBase = ($ResourceInfo | Where-Object Name -eq $Name).Module.ModuleBase
-    }
-    else {
-        $ResourceBase = ($ResourceInfo | Where-Object Module -Like $Module | Select -First 1).Module.ModuleBase
-    }
-    $ResourceBase
-}
+$DSCResources     = Get-DscResource
 
 $xWebService      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xDSCWebService'
 $xComputer        = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xComputer'
@@ -106,8 +87,8 @@ $MOFThumbprint = '583BB5FD77471A2A2644FCCD2751B360B4BFF980'
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
             CertificateThumbprint   = '12E33D877D27546998AA05056ADB0DDCF31A7763'
             #PSCredential used to import the PFX Certificate (password)
-            CertificateCredential   = Import-Clixml ($ResourcePath -f "PSDSCCertCred.clixml")
-            CertificatePath         = $ResourcePath -f "Certificates\PSDSCPullServerCert.pfx"
+            CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
+            CertificatePath         = $ResourcePath -f 'Certificates\PSDSCPullServerCert.pfx'
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
             State                   = "Started"
@@ -134,12 +115,12 @@ $MOFThumbprint = '583BB5FD77471A2A2644FCCD2751B360B4BFF980'
             Role                = 'FirstDomainController'
             DomainName          = $NewDomainName
             StaticIP            = $True
-            IPAddress           = '172.16.1.21'
+            IPAddress           = '192.168.10.21'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            #DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
-            #DomainSafeModePW    = Import-CLIXML ($ResourcePath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainSafeModePW    = Import-CLIXML ($CredPath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -147,12 +128,13 @@ $MOFThumbprint = '583BB5FD77471A2A2644FCCD2751B360B4BFF980'
             Role                = 'DomainController'
             DomainName          = $NewDomainName
             StaticIP            = $True
-            IPAddress           = '172.16.1.31'
+            IPAddress           = '192.168.10.31'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            #DomainAdminCreds    = Import-CLIXML ($ResourcePath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
         };
+        #HYPER-V Host and VM ConfigData
         @{
             NodeName            = $HyperVHost
             Role                = "HyperVHost"

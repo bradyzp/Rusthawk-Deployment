@@ -35,7 +35,8 @@
                 <Username>Administrator</Username>
             </AutoLogon>
             <ComputerName>AutoPullNode</ComputerName>
+            <ProductKey>W3GGN-FT8W3-Y4M27-J84CP-Q3VJ9</ProductKey>
         </component>
     </settings>
-    <cpi:offlineImage cpi:source="" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
+    <cpi:offlineImage cpi:source="wim://red-hawk.net/share/data/3.images/1.server/windows/server2012r2/sources/install.wim#Windows Server 2012 R2 SERVERDATACENTERCORE" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
 </unattend>

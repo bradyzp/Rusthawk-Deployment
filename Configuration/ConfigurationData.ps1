@@ -48,7 +48,6 @@ $PullNodeGUID               = ([guid]::NewGuid()).guid
 $FirstDomainControllerGUID  = ([guid]::NewGuid()).guid
 $SecondDomainControllerGUID = ([guid]::NewGuid()).guid
 
-
 $Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
 
 #VERBOSE Output - list generated GUIDs
@@ -68,13 +67,13 @@ $PullServerIP   = '172.16.10.150'
 
 #MOF Encryption Certificate Thumbprint
 #$Thumbprint = New-DSCCertificate -CertName "MOFCert" -OutputPath ($ResourcePath -f '') -PrivateKeyCred (Import-Clixml -Path ($CredPath -f 'MOFCertCred.clixml'))
-$MOFThumbprint = '583BB5FD77471A2A2644FCCD2751B360B4BFF980'
+$MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
 
 @{
     AllNodes = @(
         @{
             NodeName = "*"
-            CertificateFile = $ResourcePath -f "Certificates\MOFCert.cer"
+            CertificateFile = $ResourcePath -f "Certificates\DSCMOFEncryptionPublicKey.cer"
             Thumbprint      = $MOFThumbprint
         };
         @{
@@ -85,7 +84,7 @@ $MOFThumbprint = '583BB5FD77471A2A2644FCCD2751B360B4BFF980'
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
-            CertificateThumbprint   = '12E33D877D27546998AA05056ADB0DDCF31A7763'
+            CertificateThumbprint   = '1F9E2EBD9FF06457C1A7239F6FE9C24E96CC6E89'
             #PSCredential used to import the PFX Certificate (password)
             CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
             CertificatePath         = $ResourcePath -f 'Certificates\PSDSCPullServerCert.pfx'

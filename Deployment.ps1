@@ -81,7 +81,7 @@ PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $N
 PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 
 #Not Yet Implemented
-#DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
+DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
 #DomainController       -ConfigurationData $ConfigData -Role 'DC'           -OutPath $NodeConfigPath
 #FileServer             -ConfigurationData $ConfigData -Role 'FileServer'   -OutPath $NodeConfigPath
 
@@ -108,3 +108,5 @@ Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 #This guy is just for testing that our pull server works
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+
+

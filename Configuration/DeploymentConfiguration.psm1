@@ -116,6 +116,19 @@ Configuration PullNodeVM {
     }
 }
 
+Configuration PDCVM {
+    param (
+        [Parameter(Mandatory)]
+        [String]$Role
+    )
+    #Role will always be HyperV in this case - evaluate streamlining this
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
+        VirtualMachine PullServer {
+            VMConfig = $Node.FirstDomainController
+        }
+    }
+}
+
 ##########################
 #Start guest configurations
 ##########################
@@ -272,6 +285,9 @@ Configuration PullNodeLCM  {
         [Parameter(Mandatory)]
         [String]$RefreshMode
     )
+    
+    $NND = $ConfigurationData.NonNodeData
+
     Node $AllNodes.Where({$_.RefreshMode -eq $RefreshMode}).NodeName {
         LocalConfigurationManager {
             RebootNodeIfNeeded = $True

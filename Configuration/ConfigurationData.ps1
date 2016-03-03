@@ -13,7 +13,7 @@
     [string]$PullCertThumbprint     = "AllowUnencryptedTraffic"
 )
 
-Import-Module $PSScriptRoot/../DeploymentHelper.ps1
+Import-Module $PSScriptRoot/../DeploymentHelper.psm1 -Verbose
 
 $DSCResources     = Get-DscResource
 
@@ -68,6 +68,7 @@ $PullServerIP   = '172.16.10.150'
 #MOF Encryption Certificate Thumbprint
 #$Thumbprint = New-DSCCertificate -CertName "MOFCert" -OutputPath ($ResourcePath -f '') -PrivateKeyCred (Import-Clixml -Path ($CredPath -f 'MOFCertCred.clixml'))
 $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
+$MOFThumbprint = 'AllowUnencryptedCredentials'
 
 @{
     AllNodes = @(
@@ -75,6 +76,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             NodeName = "*"
             #CertificateFile = $ResourcePath -f "Certificates\DSCMOFEncryptionPublicKey.cer"
             #Thumbprint      = $MOFThumbprint
+            PSDSCAllowPlainTextPassowrd = $true
         };
         @{
             NodeName                = $PullServerGUID
@@ -87,7 +89,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             CertificateThumbprint   = "AllowUnencryptedTraffic"
             #CertificateThumbprint   = '1F9E2EBD9FF06457C1A7239F6FE9C24E96CC6E89'
             #PSCredential used to import the PFX Certificate (password)
-            CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
+            #CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
             CertificatePath         = $ResourcePath -f 'Certificates\PSDSCPullServerCert.pfx'
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
@@ -119,8 +121,8 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
-            DomainSafeModePW    = Import-CLIXML ($CredPath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainAdminCreds    = ''#Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainSafeModePW    = ''#Import-CLIXML ($CredPath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -132,7 +134,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainAdminCreds    = ''#Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
         };
         #HYPER-V Host and VM ConfigData
         @{

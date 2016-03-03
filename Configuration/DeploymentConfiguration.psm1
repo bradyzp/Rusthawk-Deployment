@@ -151,6 +151,7 @@ Configuration PullServer {
             Ensure = "Present"
             Name = "DSC-Service"
         }
+        <#
         xPfxImport DSCServerCert {
             Path = ''
             Thumbprint = '12E33D877D27546998AA05056ADB0DDCF31A7763'
@@ -159,7 +160,7 @@ Configuration PullServer {
             Store      = 'My'
             Exportable = $false
 
-        }
+        }#>
         xDSCWebService PullServerEP {
             EndpointName        = "DSCPullServer"
             CertificateThumbPrint = $Node.CertificateThumbprint
@@ -293,6 +294,7 @@ Configuration PullNodeLCM  {
             RefreshMode = "Pull"
             CertificateID = $Node.Thumbprint
             ConfigurationID = $Node.NodeName
+            
             RefreshFrequencyMins = 30
             DownloadManagerName = "WebDownloadManager"
             #Add variable or dns name property for pull server

@@ -6,6 +6,5 @@ Resources/VirtualMachines
 *.clixml
 *.vhdx
 *.crt
-Resource/Certificates
+Resources/Certificates/*
 *.cer
-Resources/Certificates/PSDSCPullServerCert.pfx

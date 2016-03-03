@@ -73,8 +73,8 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
     AllNodes = @(
         @{
             NodeName = "*"
-            CertificateFile = $ResourcePath -f "Certificates\DSCMOFEncryptionPublicKey.cer"
-            Thumbprint      = $MOFThumbprint
+            #CertificateFile = $ResourcePath -f "Certificates\DSCMOFEncryptionPublicKey.cer"
+            #Thumbprint      = $MOFThumbprint
         };
         @{
             NodeName                = $PullServerGUID
@@ -84,7 +84,8 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
-            CertificateThumbprint   = '1F9E2EBD9FF06457C1A7239F6FE9C24E96CC6E89'
+            CertificateThumbprint   = "AllowUnencryptedTraffic"
+            #CertificateThumbprint   = '1F9E2EBD9FF06457C1A7239F6FE9C24E96CC6E89'
             #PSCredential used to import the PFX Certificate (password)
             CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
             CertificatePath         = $ResourcePath -f 'Certificates\PSDSCPullServerCert.pfx'

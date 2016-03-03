@@ -52,7 +52,6 @@ Configuration VirtualMachine
         MACAddress           = $VMConfig.MACAddress
         Generation           = $VMConfig.VMGeneration
         DependsOn            = '[cVHDFile]FileCopy'
-        
     }
 }
 
@@ -298,7 +297,7 @@ Configuration PullNodeLCM  {
             DownloadManagerName = "WebDownloadManager"
             #Add variable or dns name property for pull server
             DownloadManagerCustomData = @{ServerUrl="http://$($ConfigurationData.NonNodeData.PullServerAddress)`:$($ConfigurationData.NonNodeData.PullServerPort)/psdscpullserver.svc";
-                                            AllowUnsecureConnection = 'false'
+                                            AllowUnsecureConnection = 'true'
                                             }
         }
     }

@@ -114,15 +114,15 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
         @{
             NodeName            = $FirstDomainControllerGUID
             MachineName         = 'FirstDomainController'
-            Role                = 'FirstDomainController'
+            Role                = 'FirstDC'
             DomainName          = $NewDomainName
             StaticIP            = $True
-            IPAddress           = '192.168.10.21'
+            IPAddress           = '172.16.10.221'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
-            
-            DomainAdminCreds    = ''#Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
-            DomainSafeModePW    = ''#Import-CLIXML ($CredPath -f 'DCSafeModeCredentials.clixml') -ErrorAction SilentlyContinue
+            #Testing - Function imports clixml creds, if they don't exist will prompt with Get-Cred
+            DomainAdminCreds    = Import-Credential -Name 'Administrator' -Path $CredPath -Export
+            DomainSafeModePW    = Import-Credential -Name 'DOMSafeModePW' -Path $CredPath -Export
         };
         @{
             NodeName            = $SecondDomainControllerGUID
@@ -134,7 +134,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = ''#Import-CLIXML ($CredPath -f 'PDCCredentials.clixml') -ErrorAction SilentlyContinue
+            DomainAdminCreds    = Import-Credential -Name 'Administrator'
         };
         #HYPER-V Host and VM ConfigData
         @{
@@ -194,6 +194,10 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
                         Source      = $xCertificate;
                         Destination = 'Program Files\WindowsPowerShell\Modules\xCertificate'
                     }
+                    @{
+                        Source      = Export-DSCModule -ModuleName 'xActiveDirectory' -ExportPath "$ResourcePath\Modules" -PassThru;
+                        Destination = 'Program Files\WindowsPowerShell\DSCService\Modules'
+                    }
                 ) 
             }
             
@@ -211,7 +215,6 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
                         Source      = $ResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
                     }
-                    
                 )
             }
             
@@ -221,7 +224,23 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
                 #MACAddress      = "00155D8A54A9"
                 VMGeneration    = 2
                 VMFileCopy      = @(
-                    #Insert metaconfig file for Domain Controller
+                    @{
+                        Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.meta.mof";
+                        Destination = 'Windows\System32\Configuration\metaconfig.mof'
+                    }
+                    @{
+                        #Kickstart the configuration without having to wait on the pull server.
+                        Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.mof";
+                        Destination = 'Windows\System32\Configuration\pending.mof'
+                    }
+                    @{
+                        Source      = $ResourcePath -f 'pullnode_unattend.xml';
+                        Destination = 'unattend.xml'
+                    }
+                    @{
+                        Source      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xActiveDirectory';
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xActiveDirectory'
+                    }
                 )
             }
             

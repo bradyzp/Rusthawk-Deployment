@@ -79,6 +79,7 @@ Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:
 PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
 PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
+FirstDC       -ConfigurationData $ConfigData -Role 'FirstDC'      -OutputPath $NodeConfigPath
 
 #Not Yet Implemented
 #DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
@@ -98,15 +99,17 @@ Write-Information -MessageData "Pushing Hyper-V Configs"
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
-#pause
 
 #Create the PullServerVM
 PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
-#pause
 
 #This guy is just for testing that our pull server works
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 
+Write-Warning "About to configure Primary DC"
+Pause
+FirstDCVM      -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+Start-DscConfiguration -Path $VMConfigPath -Force -Wait -Verbose
 

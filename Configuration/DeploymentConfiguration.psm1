@@ -115,7 +115,7 @@ Configuration PullNodeVM {
     }
 }
 
-Configuration PDCVM {
+Configuration FirstDCVM {
     param (
         [Parameter(Mandatory)]
         [String]$Role
@@ -227,16 +227,17 @@ Configuration PullNode {
             WorkGroupName = 'WORKGROUP'
             #No need to include domain join here    
         }
-        User DisableAdmin {
+        User Admin {
             UserName = 'Administrator'
-            Disabled = $True
+            Disabled = $false
             Ensure = "Present"
+            Password = Get-Credential -Message "PullNode Admin" -UserName "Administrator"
         }
     }
 }
 
-#COnfiguration for the domains initial domain controller
-Configuration FirstDomainController {
+#Configuration for the domains initial domain controller
+Configuration FirstDC {
     param (
         [Parameter(Mandatory)]
         [String]$Role
@@ -259,7 +260,8 @@ Configuration FirstDomainController {
         }
         #Create the local user that will become the first domain administrator
         User DomainAdminUser {
-            UserName = $Node.DomainCreds.Username
+            #UserName = $Node.DomainCreds.Username
+            UserName = "Administrator"
             Password = $Node.DomainCreds
             Ensure = "Present"
         }
@@ -274,7 +276,6 @@ Configuration FirstDomainController {
         xWaitForADDomain ForestWait {
             DependsOn = "[xADDomain]FirstDomain"
         }
-
     }
 }
 

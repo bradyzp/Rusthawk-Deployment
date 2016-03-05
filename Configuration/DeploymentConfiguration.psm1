@@ -52,6 +52,7 @@ Configuration VirtualMachine
         MACAddress           = $VMConfig.MACAddress
         Generation           = $VMConfig.VMGeneration
         DependsOn            = '[cVHDFile]FileCopy'
+        ProcessorCount       = $VMConfig.CPUCount
     }
 }
 
@@ -225,13 +226,14 @@ Configuration PullNode {
         xComputer SetNodeName {
             Name = $Node.MachineName
             WorkGroupName = 'WORKGROUP'
-            #No need to include domain join here    
+            #No need to include domain join here
         }
         User Admin {
             UserName = 'Administrator'
             Disabled = $false
-            Ensure = "Present"
-            Password = Get-Credential -Message "PullNode Admin" -UserName "Administrator"
+            Ensure   = "Present"
+            #Password = Get-Credential -Message "PullNode Admin" -UserName "Administrator"
+            Password = $Node.AdminCredential
         }
     }
 }
@@ -242,45 +244,45 @@ Configuration FirstDC {
         [Parameter(Mandatory)]
         [String]$Role
     )
-
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
     Import-DscResource -ModuleName xComputerManagement
     Import-DscResource -ModuleName xActiveDirectory -ModuleVersion '2.9.0.0'
 
     Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
-        WindowsFeature DNS {
+        WindowsFeature DNSRole {
             Ensure = "Present"
             Name = "DNS"
             IncludeAllSubFeature = $true
         }
-        WindowsFeature ADDS {
+        WindowsFeature ADDSRole {
             Ensure = "Present"
             Name = "AD-Domain-Services"
             IncludeAllSubFeature = $true
-            DependsOn = "[WindowsFeature]DNS"
+            #DependsOn = "[WindowsFeature]DNSRole"
         }
         #Create the local user that will become the first domain administrator
         User DomainAdminUser {
             #UserName = $Node.DomainCreds.Username
             UserName = "Administrator"
-            Password = $Node.DomainCreds
+            Password = $Node.DomainAdminCreds
             Ensure = "Present"
         }
         xADDomain FirstDomain {
             DomainName = $Node.DomainName
             #Credential to check for existance of domain
-            DomainAdministratorCredential = $Node.DomainCreds
+            DomainAdministratorCredential = $Node.DomainAdminCreds
             SafeModeAdministratorPassword = $Node.DomainSafeModePW
             ParentDomainName = ''
-            DependsOn = "[WindowsFeature]ADDS"
+            DependsOn = "[WindowsFeature]ADDSRole"
         }
-        xWaitForADDomain ForestWait {
-            DependsOn = "[xADDomain]FirstDomain"
+        xComputer RenameComputer {
+
+
         }
     }
 }
 
-
-#Generate LCM Settings to 
+#Generate LCM Settings to pull configuration for all nodes where RefreshMode is set to $RefreshMode
 Configuration PullNodeLCM  {
     param (
         [Parameter(Mandatory)]

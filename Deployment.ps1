@@ -36,6 +36,10 @@
 
 #BRANCH MASTER
 
+#Testing Variables:
+$Verbose = $true
+
+
 #---------------------------------#
 #Setup and Path/Dir Config
 #---------------------------------#
@@ -44,6 +48,8 @@
 $ResourcePath    = Join-Path -Path $PSScriptRoot    -ChildPath "Resources"
 #Path to store generated node MOF files, these files are injected into VHDs to perform initial configuration tasks
 $NodeConfigPath  = Join-Path -Path $ResourcePath    -ChildPath "Nodes"
+#Path for exported DSC Packages (zip files for DSC Pull Server)
+$NodeModulePath  = Join-Path -Path $ResourcePath    -ChildPath "Modules"
 #Path to store xHyperV Configuration files to be executed on the Hyper-V Host, these aren't referenced by any script except this when executing Start-DSCConfiguration
 $VMConfigPath    = Join-Path -Path $ResourcePath    -ChildPath "VirtualMachines"
 
@@ -55,6 +61,7 @@ if(-not (Test-Path $ResourcePath)) {
 }
 
 New-Item -Path $NodeConfigPath -ItemType Directory -Force | Out-Null
+New-Item -Path $NodeModulePath -ItemType Directory -Force | Out-Null
 New-Item -Path $VMConfigPath -ItemType Directory -Force | Out-Null
 
 #---------------------------------#
@@ -78,8 +85,9 @@ Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:
 
 PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
 PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
-PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 FirstDC       -ConfigurationData $ConfigData -Role 'FirstDC'      -OutputPath $NodeConfigPath
+#Generate LCM for all nodes that will pull a configuration
+PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
 
 #Not Yet Implemented
 #DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
@@ -98,18 +106,17 @@ Write-Information -MessageData "Pushing Hyper-V Configs"
 
 #Host Config - Ensure presense of Hyper-V Role
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
 
 #Create the PullServerVM
 PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
 
 #This guy is just for testing that our pull server works
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose
+Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
 
 Write-Warning "About to configure Primary DC"
 Pause
 FirstDCVM      -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DscConfiguration -Path $VMConfigPath -Force -Wait -Verbose
-
+Start-DscConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose

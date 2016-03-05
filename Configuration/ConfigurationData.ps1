@@ -33,7 +33,7 @@ $xCertificate     = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xCert
 $ResourcePath += "\{0}"
 
 if(-not $CredPath) {
-    $CredPath = $ResourcePath
+    $CredPath = $ResourcePath -f ''
 }
 
 $BaseVHDPath = $ResourcePath -f 'basevhd.vhdx'
@@ -76,7 +76,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             NodeName = "*"
             #CertificateFile = $ResourcePath -f "Certificates\DSCMOFEncryptionPublicKey.cer"
             #Thumbprint      = $MOFThumbprint
-            PSDSCAllowPlainTextPassowrd = $true
+            PSDscAllowPlainTextPassword = $true
         };
         @{
             NodeName                = $PullServerGUID
@@ -105,6 +105,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             MachineName             = 'RHPullNode'
             Role                    = 'PullNode'
             DomainName              = $NewDomainName
+            AdminCredential         = Import-Credential -Name 'PullAdmin' -Path $CredPath -Export
             StaticIP                = $True
             IPAddress               = '172.16.10.165'
             AddressFamily           = 'IPv4'
@@ -134,7 +135,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             SubnetMask          = '24'
             RefreshMode         = 'Pull'
             
-            DomainAdminCreds    = Import-Credential -Name 'Administrator'
+            DomainAdminCreds    = Import-Credential -Name 'Administrator' -Path $CredPath -Export
         };
         #HYPER-V Host and VM ConfigData
         @{
@@ -153,8 +154,9 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             DSCPullServer = @{
                 MachineName     = "$($VMPrefix)DSCPullServer"
                 MemorySizeVM    = 2048MB
-                MACAddress      = '00155D8A54A0'
+                #MACAddress      = '00155D8A54A0'
                 VMGeneration    = 2
+                CPUCount        = 2
                 VMFileCopy      = @(
                     @{
                         Source      = $ResourcePath -f "PullServer\$PullServerGUID.mof";
@@ -195,7 +197,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
                         Destination = 'Program Files\WindowsPowerShell\Modules\xCertificate'
                     }
                     @{
-                        Source      = Export-DSCModule -ModuleName 'xActiveDirectory' -ExportPath "$ResourcePath\Modules" -PassThru;
+                        Source      = Export-DSCModule -ModuleName 'xActiveDirectory' -ExportPath ($ResourcePath -f "Modules") -PassThru;
                         Destination = 'Program Files\WindowsPowerShell\DSCService\Modules'
                     }
                 ) 
@@ -204,8 +206,9 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             DSCPullNode = @{
                 MachineName     = "$($VMPrefix)DSCPullNode"
                 MemorySizeVM    = 2048MB
-                MACAddress      = "00155D8A54A5"
+                #MACAddress      = "00155D8A54A5"
                 VMGeneration    = 2
+                CPUCount        = 2
                 VMFileCopy      = @(
                     @{
                         Source      = $ResourcePath -f "$NodeChildPath\$PullNodeGUID.meta.mof";
@@ -223,6 +226,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
                 MemorySizeVM    = 2048MB
                 #MACAddress      = "00155D8A54A9"
                 VMGeneration    = 2
+                CPUCount        = 2
                 VMFileCopy      = @(
                     @{
                         Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.meta.mof";
@@ -238,7 +242,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
                         Destination = 'unattend.xml'
                     }
                     @{
-                        Source      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xActiveDirectory';
+                        Source      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xActiveDirectory';
                         Destination = 'Program Files\WindowsPowerShell\Modules\xActiveDirectory'
                     }
                 )

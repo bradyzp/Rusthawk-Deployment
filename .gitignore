@@ -1,4 +1,3 @@
-# Managed Object Format
 *.mof
 Testing/*
 Resources/Nodes
@@ -7,4 +6,5 @@ Resources/VirtualMachines
 *.vhdx
 *.crt
 Resources/Certificates/*
+Resources/Modules/*
 *.cer

@@ -28,11 +28,12 @@ Configuration VirtualMachine
     }
 
     $AllFiles = $VMConfig.VMFileCopy + $ConfigurationData.NonNodeData.CommonFiles
+    $VHDPath  = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
     cVHDFile FileCopy
     {
         PartitionNumber = $Node.VHDPartitionNumber
-        VhdPath = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
-        FileDirectory = $AllFiles | % {
+        VhdPath = $VHDPath
+        FileDirectory = $AllFiles | Foreach-Object {
             MSFT_xFileDirectory {
                 SourcePath = $_.Source
                 DestinationPath = $_.Destination
@@ -45,7 +46,7 @@ Configuration VirtualMachine
     {
         Name                 = $VMConfig.MachineName
         Path                 = $Node.Path
-        VhDPath              = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
+        VhDPath              = $VHDPath
         SwitchName           = $Node.SwitchName
         State                = $Node.VMState
         StartupMemory        = $VMConfig.MemorySizeVM
@@ -70,19 +71,18 @@ Configuration HyperVHost {
             Ensure = "Present"
             Name = "Hyper-V"
         }
-
         File DeploymentPath {
             DestinationPath = $Node.Path
-            Ensure = "Present"
-            Force = $true
-            Type = "directory"
+            Ensure          = "Present"
+            Force           = $true
+            Type            = "Directory"
         }
         xVMSwitch DeploySwitch {
-            Name = $Node.SwitchName
-            Type = $Node.SwitchType
-            NetAdapterName = "Port 2 - Red-Hawk.net (810)"
-            Ensure = "Present"
-            DependsOn = "[WindowsFeature]HyperV"
+            Name           = $Node.SwitchName
+            Type           = $Node.SwitchType
+            NetAdapterName = $Node.NetAdapterName
+            Ensure         = "Present"
+            DependsOn      = "[WindowsFeature]HyperV"
         }
     }
 }
@@ -91,12 +91,39 @@ Configuration HyperVHost {
 #Start VM Configurations
 ##########################
 
+<#
+    .SYNOPSIS
+    Generate a Hyper-V Guest VM Configuration
+
+    .PARAMETER ConfigName
+    (Optional) Specify a Configuration Block name different than the VMName
+#>
+Configuration HyperVGuest {
+    param (
+        [Parameter(Mandatory)]
+        [String]$Role = "HyperVHos",
+        [Parameter(Mandatory)]
+        [String]$VMName,
+        [String]$ConfigName = $VMName
+    )
+    
+    #Role is always HyperV - selects the HyperV Host node
+    #Virtual machines are pulled from 
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
+        #Select Machine parameters by $VMName
+        VirtualMachine $VMName {
+            VMConfig = $Node.$ConfigName
+        }
+    }
+    #e.g. replacing PullServerVM
+    #HyperVGuest -Role HyperV -VMName DSCPullServer
+}
+
 Configuration PullServerVM {
     param (
         [Parameter(Mandatory)]
         [String]$Role
     )
-    #Role will always be HyperV in this case - evaluate streamlining this
     Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         VirtualMachine PullServer {
             VMConfig = $Node.DSCPullServer

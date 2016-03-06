@@ -1,4 +1,32 @@
-﻿param (
+﻿<#
+    .PARAMETER ResourcePath
+
+    .PARAMETER SourceVHDPath
+
+    .PARAMETER DeploymentPath
+
+    .PARAMETER NodeChildPath
+    Specify an alternate path for generated Node configurations, required for copy operations to the DSC Pull Server.
+    Default: Nodes
+
+    .PARAMETER ComputerName
+    The Hyper-V Host computer to execute this configuration on
+    Alias: HyperVHost for Compatability
+
+    .PARAMETER NewDomainName
+    Specify the name of the new domain to provision
+
+    .PARAMETER CredPath
+    (Optional) Specify a different path to import/store Credential .clixml files.
+    Default: $ResourcePath
+
+    .PARAMETER HTTPSCertThumbprint
+    Specify the Certificate Thumbprint of the certificate used to encrypt traffic between the DSC Pull Server and Nodes (HTTPS)
+    Default: AllowUnencryptedTraffic
+
+#>
+
+param (
     #Host DSC Resources
     [Parameter(Mandatory)]
     [string]$ResourcePath,
@@ -7,10 +35,12 @@
     [Parameter(Mandatory)]
     [String]$DeploymentPath,
     [String]$NodeChildPath      = "Nodes",
-    [String]$HyperVHost         = "localhost",
+    [Alias("HyperVHost")]
+    [String]$ComputerName       = "localhost",           #Change to ComputerName?
     [string]$NewDomainName      = "dev.rusthawk.net",
-    [String]$CredPath,
-    [string]$PullCertThumbprint     = "AllowUnencryptedTraffic"
+    [String]$CredPath           = $ResourcePath,
+    [Alias("PullCertThumbprint")]
+    [string]$HTTPSCertThumbprint = "AllowUnencryptedTraffic"
 )
 
 Import-Module $PSScriptRoot/../DeploymentHelper.psm1 -Verbose
@@ -23,6 +53,8 @@ $xNetworking      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xNetw
 $xWebAdmin        = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xWebAdministration'
 $xCertificate     = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xCertificate'
 
+$PullServerIP   = '172.16.10.150'  #This might become a parameter
+
 ##
 #ResourcePath - Where any ancilliary resource files will be located for copying to nodes
 #SourceVHDPath - The source VHD(x) file to generate VM's from
@@ -32,32 +64,27 @@ $xCertificate     = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xCert
 #For ease of use using string formatting -f
 $ResourcePath += "\{0}"
 
-if(-not $CredPath) {
-    $CredPath = $ResourcePath -f ''
-}
-
 $BaseVHDPath = $ResourcePath -f 'basevhd.vhdx'
 
 #Designate a Prefix for the name of the Hyper-V VMs
 $VMPrefix = "DEV-DSC-"
 
-#Generate GUIDs for Machines
-#Make sure that these are passed as strings or it breaks EVERYTHING!!!!
+#####
+#GUID GENERATION BLOCK
+#####
 $PullServerGUID             = ([guid]::NewGuid()).guid
 $PullNodeGUID               = ([guid]::NewGuid()).guid
 $FirstDomainControllerGUID  = ([guid]::NewGuid()).guid
 $SecondDomainControllerGUID = ([guid]::NewGuid()).guid
 
-$Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
-
-#VERBOSE Output - list generated GUIDs
+#$Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
 #Write-Verbose -Message "[$Script]: PullServerGUID: $PullServerGUID"
 #Write-Verbose -Message "[$Script]: PullNodeGUID: $PullNodeGUID"
 #Write-Verbose -Message "[$Script]: FDCGUID: $FirstDomainControllerGUID"
 #Write-Verbose -Message "[$Script]: SDCGUID: $SecondDomainControllerGUID"
 
-#TODO: Determine if this is needed here or not
-$PullServerIP   = '172.16.10.150'
+
+
 
 #Generate selfsigned certificate to encrypt MOF Credentials
 #-Certificate is generated on the Host (Hyper-V)
@@ -68,7 +95,6 @@ $PullServerIP   = '172.16.10.150'
 #MOF Encryption Certificate Thumbprint
 #$Thumbprint = New-DSCCertificate -CertName "MOFCert" -OutputPath ($ResourcePath -f '') -PrivateKeyCred (Import-Clixml -Path ($CredPath -f 'MOFCertCred.clixml'))
 $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
-$MOFThumbprint = 'AllowUnencryptedCredentials'
 
 @{
     AllNodes = @(
@@ -86,11 +112,13 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             ModulePath              = "$env:ProgramFiles\WindowsPowerShell\DSCService\Modules"
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
-            CertificateThumbprint   = "AllowUnencryptedTraffic"
-            #CertificateThumbprint   = '1F9E2EBD9FF06457C1A7239F6FE9C24E96CC6E89'
+            
+            CertificateThumbprint   = $HTTPSCertThumbprint
             #PSCredential used to import the PFX Certificate (password)
             #CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
+            #HTTPS Certificate to encrypt DSC Server Communications
             CertificatePath         = $ResourcePath -f 'Certificates\PSDSCPullServerCert.pfx'
+            
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
             State                   = "Started"
@@ -139,7 +167,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
         };
         #HYPER-V Host and VM ConfigData
         @{
-            NodeName            = $HyperVHost
+            NodeName            = $ComputerName
             Role                = "HyperVHost"
             ResourcePath        = $ResourcePath
             VHDParentPath       = $BaseVHDPath
@@ -148,6 +176,7 @@ $MOFThumbprint = 'AllowUnencryptedCredentials'
             VHDPartitionNUmber  = 4
             SwitchName          = "Red-Hawk Production"
             SwitchType          = "External"
+            NetAdapterName      = "Port 2 - Red-Hawk.net (810)"
             VMState             = "Running"
             Path                = $DeploymentPath
 

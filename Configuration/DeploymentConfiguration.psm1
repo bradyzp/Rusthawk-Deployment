@@ -303,10 +303,33 @@ Configuration FirstDC {
             DependsOn = "[WindowsFeature]ADDSRole"
         }
         xComputer RenameComputer {
-
-
+            Name = $Node.MachineName
         }
     }
+}
+
+Configuration DomainController {
+    param (
+        [Parameter(Mandatory)]
+        [String]$Role
+    )
+
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
+        WindowsFeature ADDSRole {
+            Ensure = "Present"
+            Name = "AD-Domain-Services"
+            IncludeAllSubFeature = $true
+        }
+        xADDomainController DomainController {
+            DomainName = $Node.DomainName
+            DomainAdministratorCredential = $Node.DomainAdminCreds
+            SafeModeAdministratorPassword = $Node.DomainSafeModePW
+        }
+
+
+
+    } #END NODE
+    
 }
 
 #Generate LCM Settings to pull configuration for all nodes where RefreshMode is set to $RefreshMode
@@ -324,9 +347,10 @@ Configuration PullNodeLCM  {
             RefreshMode = "Pull"
             CertificateID = $Node.Thumbprint
             ConfigurationID = $Node.NodeName
-            
+            ConfigurationMode = "ApplyAndAutoCorrect"
             RefreshFrequencyMins = 30
             DownloadManagerName = "WebDownloadManager"
+            AllowModuleOverwrite = $true
             #Add variable or dns name property for pull server
             DownloadManagerCustomData = @{ServerUrl="http://$($ConfigurationData.NonNodeData.PullServerAddress)`:$($ConfigurationData.NonNodeData.PullServerPort)/psdscpullserver.svc";
                                             AllowUnsecureConnection = 'true'

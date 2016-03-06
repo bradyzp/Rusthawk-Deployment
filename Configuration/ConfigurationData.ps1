@@ -24,6 +24,12 @@
     Specify the Certificate Thumbprint of the certificate used to encrypt traffic between the DSC Pull Server and Nodes (HTTPS)
     Default: AllowUnencryptedTraffic
 
+    .PARAMETER MOFCertThumbprint
+    Thumbprint of the certificate used to encrypt/decrypt MOF file credentials
+
+    .PARAMETER MOFCertPath
+    Path to the certificate public key (.cer) used to encrypt MOF file credentials
+
 #>
 
 param (
@@ -36,11 +42,14 @@ param (
     [String]$DeploymentPath,
     [String]$NodeChildPath      = "Nodes",
     [Alias("HyperVHost")]
-    [String]$ComputerName       = "localhost",           #Change to ComputerName?
+    [String]$ComputerName       = "localhost",
     [string]$NewDomainName      = "dev.rusthawk.net",
     [String]$CredPath           = $ResourcePath,
     [Alias("PullCertThumbprint")]
-    [string]$HTTPSCertThumbprint = "AllowUnencryptedTraffic"
+    [string]$HTTPSCertThumbprint = "AllowUnencryptedTraffic",
+    [string]$HTTPSCertPath,
+    [string]$MOFCertThumbprint,
+    [string]$MOFCertPath
 )
 
 Import-Module $PSScriptRoot/../DeploymentHelper.psm1 -Verbose
@@ -100,7 +109,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
     AllNodes = @(
         @{
             NodeName = "*"
-            #CertificateFile = $ResourcePath -f "Certificates\DSCMOFEncryptionPublicKey.cer"
+            #CertificateFile = 
             #Thumbprint      = $MOFThumbprint
             PSDscAllowPlainTextPassword = $true
         };
@@ -142,7 +151,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
         };
         @{
             NodeName            = $FirstDomainControllerGUID
-            MachineName         = 'FirstDomainController'
+            MachineName         = 'RH-PDC'
             Role                = 'FirstDC'
             DomainName          = $NewDomainName
             StaticIP            = $True
@@ -155,7 +164,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
         };
         @{
             NodeName            = $SecondDomainControllerGUID
-            MachineName         = 'SecondDomainController'
+            MachineName         = 'RH-SDC'
             Role                = 'DomainController'
             DomainName          = $NewDomainName
             StaticIP            = $True
@@ -261,11 +270,11 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                         Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
-                    @{
+                    <#@{
                         #Kickstart the configuration without having to wait on the pull server.
                         Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.mof";
                         Destination = 'Windows\System32\Configuration\pending.mof'
-                    }
+                    }#>
                     @{
                         Source      = $ResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
@@ -307,6 +316,10 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             @{
                 Source      = $ResourcePath -f 'setup.cmd';
                 Destination = 'Scripts\setup.cmd'
+            }
+            @{
+                Source      = $ResourcePath -f 'setup.cmd';
+                Destination = 'Windows\Setup\Scripts\SetupComplete.cmd'
             }
             @{
                 Source      = $ResourcePath -f 'Certificates\rusthawk-root-ca_RUSTHAWK-ROOT-CA.crt'

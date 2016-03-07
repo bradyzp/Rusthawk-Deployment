@@ -1,9 +1,12 @@
 ﻿<#
     .PARAMETER ResourcePath
+    Define the path to the resource folder where files reside for copying to VMs/VHDs
 
     .PARAMETER SourceVHDPath
+    Path to the Server2012 sysprepped VHDX file that will be used as the base differencing VHD
 
     .PARAMETER DeploymentPath
+    Path to the storage destination for VM files and VHDs
 
     .PARAMETER NodeChildPath
     Specify an alternate path for generated Node configurations, required for copy operations to the DSC Pull Server.
@@ -50,19 +53,17 @@ param (
     [string]$HTTPSCertPath,
     [string]$MOFCertThumbprint,
     [string]$MOFCertPath
+    #[switch]$Verbose
 )
 
-Import-Module $PSScriptRoot/../DeploymentHelper.psm1 -Verbose
+Import-Module $PSScriptRoot/../DeploymentHelper.psm1 -Verbose -Force
 
 $DSCResources     = Get-DscResource
 
-$xWebService      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xDSCWebService'
 $xComputer        = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xComputer'
 $xNetworking      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xNetworking'
 $xWebAdmin        = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xWebAdministration'
 $xCertificate     = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xCertificate'
-
-$PullServerIP   = '172.16.10.150'  #This might become a parameter
 
 ##
 #ResourcePath - Where any ancilliary resource files will be located for copying to nodes
@@ -78,43 +79,30 @@ $BaseVHDPath = $ResourcePath -f 'basevhd.vhdx'
 #Designate a Prefix for the name of the Hyper-V VMs
 $VMPrefix = "DEV-DSC-"
 
-#####
-#GUID GENERATION BLOCK
-#####
-$PullServerGUID             = ([guid]::NewGuid()).guid
-$PullNodeGUID               = ([guid]::NewGuid()).guid
-$FirstDomainControllerGUID  = ([guid]::NewGuid()).guid
-$SecondDomainControllerGUID = ([guid]::NewGuid()).guid
+$GUID = @{
+    'PullServer' = New-MachineName -Name 'PullServer' -Verbose:$Verbose
+    'PullNode'   = New-MachineName -Name 'PullNode'   -Verbose:$Verbose
+    'FirstDC'    = New-MachineName -Name 'FirstDC'    -Verbose:$Verbose
+    'SecondDC'   = New-MachineName -Name 'SecondDC'   -Verbose:$Verbose
+}
 
-#$Script = Split-Path $MyInvocation.MyCommand.Path -Leaf
-#Write-Verbose -Message "[$Script]: PullServerGUID: $PullServerGUID"
-#Write-Verbose -Message "[$Script]: PullNodeGUID: $PullNodeGUID"
-#Write-Verbose -Message "[$Script]: FDCGUID: $FirstDomainControllerGUID"
-#Write-Verbose -Message "[$Script]: SDCGUID: $SecondDomainControllerGUID"
-
-
-
-
-#Generate selfsigned certificate to encrypt MOF Credentials
-#-Certificate is generated on the Host (Hyper-V)
-#Private key is exported to pfx file (protected by -PrivateKeyCred credential) to be copied to the node
-#Private key pfx needs to be imported on the node (Import-PFXCertificate) to enable decryption of MOF files encrypted using the pub key on the Hyper-V Host
-#Figure out how to import the pfx as it requires a password, how to do this safely?
-
-#MOF Encryption Certificate Thumbprint
-#$Thumbprint = New-DSCCertificate -CertName "MOFCert" -OutputPath ($ResourcePath -f '') -PrivateKeyCred (Import-Clixml -Path ($CredPath -f 'MOFCertCred.clixml'))
-$MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
+$IP = @{
+    PullServer = '192.168.10.200'
+    PullNode   = '192.168.10.100'
+    FirstDC    = '192.168.10.21'
+    SecondDC   = '192.168.10.31'
+}
 
 @{
     AllNodes = @(
         @{
             NodeName = "*"
-            #CertificateFile = 
-            #Thumbprint      = $MOFThumbprint
-            PSDscAllowPlainTextPassword = $true
+            CertificateFile = $MOFCertPath            
+            Thumbprint      = $MOFCertThumbprint
+            PSDscAllowPlainTextPassword = [bool](-not $MOFCertThumbprint -or (-not (Test-Path $MOFCertPath)))
         };
         @{
-            NodeName                = $PullServerGUID
+            NodeName                = $GUID.PullServer
             MachineName             = 'RHPullServer'
             Role                    = 'PullServer'
             DomainName              = $NewDomainName
@@ -122,57 +110,57 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
             ConfigurationPath       = "$env:ProgramFiles\WindowsPowerShell\DSCService\Configuration"
             RegistrationKeyPath     = "$env:ProgramFiles\WindowsPowerShell\DSCService\registration.txt" 
             
+            CertificateCredential   = Import-Credential -Name 'PullServerHTTPS' -Path $CredPath -Export
+            CertificatePath         = $HTTPSCertPath
             CertificateThumbprint   = $HTTPSCertThumbprint
-            #PSCredential used to import the PFX Certificate (password)
-            #CertificateCredential   = Import-Clixml ($CredPath -f 'PSDSCCertCred.clixml')
-            #HTTPS Certificate to encrypt DSC Server Communications
-            CertificatePath         = $ResourcePath -f 'Certificates\PSDSCPullServerCert.pfx'
             
             PhysicalPath            = "$env:SystemDrive\inetpub\wwwroot\DSCPullServer"
             Port                    = 8080
             State                   = "Started"
             StaticIP                = $True
-            IPAddress               = $PullServerIP
+            IPAddress               = $IP.PullServer
             AddressFamily           = 'IPv4'
             SubnetMask              = '24'
             RefreshMode             = 'Push'
-        }
+        };
         @{
-            NodeName                = $PullNodeGUID
+            NodeName                = $GUID.PullNode
             MachineName             = 'RHPullNode'
             Role                    = 'PullNode'
             DomainName              = $NewDomainName
             AdminCredential         = Import-Credential -Name 'PullAdmin' -Path $CredPath -Export
             StaticIP                = $True
-            IPAddress               = '172.16.10.165'
+            IPAddress               = $IP.PullNode
             AddressFamily           = 'IPv4'
             SubnetMask              = '24'
             RefreshMode             = 'Pull'
         };
         @{
-            NodeName            = $FirstDomainControllerGUID
+            NodeName            = $GUID.FirstDC
             MachineName         = 'RH-PDC'
             Role                = 'FirstDC'
             DomainName          = $NewDomainName
             StaticIP            = $True
-            IPAddress           = '172.16.10.221'
+            IPAddress           = $IP.FirstDC
+            AddressFamily       = 'IPv4'
             SubnetMask          = '24'
-            RefreshMode         = 'Pull'
+            RefreshMode         = 'Push'
             #Testing - Function imports clixml creds, if they don't exist will prompt with Get-Cred
             DomainAdminCreds    = Import-Credential -Name 'Administrator' -Path $CredPath -Export
             DomainSafeModePW    = Import-Credential -Name 'DOMSafeModePW' -Path $CredPath -Export
         };
         @{
-            NodeName            = $SecondDomainControllerGUID
-            MachineName         = 'RH-SDC'
-            Role                = 'DomainController'
+            NodeName            = $GUID.SecondDC
+            MachineName         = 'RH-SDC01'
+            Role                = 'SDC'
             DomainName          = $NewDomainName
             StaticIP            = $True
-            IPAddress           = '192.168.10.31'
+            IPAddress           = $IP.SecondDC
+            AddressFamily       = 'IPv4'
             SubnetMask          = '24'
-            RefreshMode         = 'Pull'
-            
+            RefreshMode         = 'Push'
             DomainAdminCreds    = Import-Credential -Name 'Administrator' -Path $CredPath -Export
+            DomainSafeModePW    = Import-Credential -Name 'DOMSafeModePW' -Path $CredPath -Export
         };
         #HYPER-V Host and VM ConfigData
         @{
@@ -197,11 +185,11 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                 CPUCount        = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $ResourcePath -f "PullServer\$PullServerGUID.mof";
+                        Source      = $ResourcePath -f "PullServer\$($GUID.PullServer).mof";
                         Destination = 'Windows\System32\Configuration\pending.mof'
                     }
                     @{
-                        Source      = $ResourcePath -f "PullServer\$PullServerGUID.meta.mof";
+                        Source      = $ResourcePath -f "PullServer\$($GUID.PullServer).meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
@@ -223,7 +211,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                         Destination = 'Scripts\PSDSCPullServer.pfx'
                     }
                     @{
-                        Source      = $xWebService;
+                        Source      = Select-ModuleBase -ResourceInfo $DSCResources -Name 'xDSCWebService';
                         Destination = 'Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration'
                     }
                     @{
@@ -249,7 +237,7 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                 CPUCount        = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $ResourcePath -f "$NodeChildPath\$PullNodeGUID.meta.mof";
+                        Source      = $ResourcePath -f "$NodeChildPath\$($GUID.PullNode).meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
                     @{
@@ -267,14 +255,41 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                 CPUCount        = 2
                 VMFileCopy      = @(
                     @{
-                        Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.meta.mof";
+                        Source      = $ResourcePath -f "$NodeChildPath\$($GUID.FirstDC).meta.mof";
                         Destination = 'Windows\System32\Configuration\metaconfig.mof'
                     }
-                    <#@{
-                        #Kickstart the configuration without having to wait on the pull server.
-                        Source      = $ResourcePath -f "$NodeChildPath\$FirstDomainControllerGUID.mof";
+                    @{
+                        Source      = $ResourcePath -f "$NodeChildPath\$($GUID.FirstDC).mof";
                         Destination = 'Windows\System32\Configuration\pending.mof'
-                    }#>
+                    }
+                    @{
+                        Source      = $ResourcePath -f 'pullnode_unattend.xml';
+                        Destination = 'unattend.xml'
+                    }
+                    @{
+                        Source      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xActiveDirectory';
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xActiveDirectory'
+                    }
+                    @{
+                        Source      = Select-ModuleBase -ResourceInfo $DSCResources -Module 'xDHCPServer';
+                        Destination = 'Program Files\WindowsPowerShell\Modules\xDHCPServer'
+                    }
+                )
+            }
+            
+            SecondDomainController = @{
+                MachineName     = "$($VMPrefix)SecondDomainController"
+                MemorySizeVM    = 2048MB
+                VMGeneration    = 2
+                VMFileCopy      = @(
+                     @{
+                        Source      = $ResourcePath -f "$NodeChildPath\$($GUID.SecondDC).meta.mof";
+                        Destination = 'Windows\System32\Configuration\metaconfig.mof'
+                    }
+                    @{
+                        Source      = $ResourcePath -f "$NodeChildPath\$($GUID.SecondDC).mof";
+                        Destination = 'Windows\System32\Configuration\pending.mof'
+                    }
                     @{
                         Source      = $ResourcePath -f 'pullnode_unattend.xml';
                         Destination = 'unattend.xml'
@@ -285,21 +300,16 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                     }
                 )
             }
-            
-            SecondDomainController = @{
-                MachineName     = "$($VMPrefix)SecondDomainController"
-                MemorySizeVM    = 2048MB
-                VMGeneration    = 2
-                VMFileCopy      = @(
-                    #Insert metaconfig file for Domain Controller
-                    
-                )
-            }
         }
     );
     NonNodeData = @{
-        PullServerAddress = $PullServerIP
+        PullServerAddress = $IP.PullServer
         PullServerPort = 8080
+        SubnetStart = '192.168.10.10'
+        SubnetEnd   = '192.168.10.254'
+        SubnetMask      = '255.255.255.0'
+
+        DNSServers = @($IP.FirstDC, $IP.SecondDC)
         CommonFiles = @(
             @{
                 Source      = $xComputer
@@ -325,6 +335,13 @@ $MOFThumbprint = 'DDB954208A637355450667FADA84A35B47941C78'
                 Source      = $ResourcePath -f 'Certificates\rusthawk-root-ca_RUSTHAWK-ROOT-CA.crt'
                 Destination = 'Scripts\rootcert.crt'
             }
+        )
+        DHCPReservations = @(
+            @{
+                Name = ''
+                MAC  = ''
+                IP   = ''
+            };        
         )
     }
    

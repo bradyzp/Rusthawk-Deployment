@@ -36,10 +36,6 @@
 
 #BRANCH MASTER
 
-#Testing Variables:
-$Verbose = $true
-
-
 #---------------------------------#
 #Setup and Path/Dir Config
 #---------------------------------#
@@ -79,19 +75,21 @@ $ConfigData = & "$PSScriptRoot\Configuration\ConfigurationData.ps1" @ConfigDataP
 
 
 #Mainly for testing - ensure an outdated version of DeploymentConfig isn't loaded
-Remove-Module DeploymentConfiguration -ErrorAction SilentlyContinue
+Remove-Module DeploymentConfiguration -ErrorAction SilentlyContinue | Out-Null
 
 Import-Module $PSScriptRoot\Configuration\DeploymentConfiguration.psm1 -Verbose:$False
 
-PullServer    -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
-PullNode      -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
-FirstDC       -ConfigurationData $ConfigData -Role 'FirstDC'      -OutputPath $NodeConfigPath
+PullServer -ConfigurationData $ConfigData -Role 'PullServer'   -OutputPath $ResourcePath\PullServer
+PullNode   -ConfigurationData $ConfigData -Role 'PullNode'     -OutputPath $NodeConfigPath
+FirstDC    -ConfigurationData $ConfigData -Role 'FirstDC'      -OutputPath $NodeConfigPath
+DC         -ConfigurationData $ConfigData -Role 'SDC'          -OutputPath $NodeConfigPath
+
 #Generate LCM for all nodes that will pull a configuration
 PullNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Pull'  -OutputPath $NodeConfigPath
+PushNodeLCM   -ConfigurationData $ConfigData -RefreshMode 'Push'  -OutputPath $NodeConfigPath
 
-#Not Yet Implemented
-#DomainController       -ConfigurationData $ConfigData -Role 'PDC'          -OutPath $NodeConfigPath
-#DomainController       -ConfigurationData $ConfigData -Role 'DC'           -OutPath $NodeConfigPath
+
+
 #FileServer             -ConfigurationData $ConfigData -Role 'FileServer'   -OutPath $NodeConfigPath
 
 #Generate DSC Checksum for configs for DSC Pull
@@ -108,6 +106,17 @@ Write-Information -MessageData "Pushing Hyper-V Configs"
 HyperVHost     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
 
+Write-Warning "About to configure Primary DC"
+FirstDCVM      -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
+Start-DscConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
+#Wait for DC to configure
+Write-Warning "Waiting for PDC to configure"
+Start-Sleep -Seconds 120
+
+#Testing - Configure secondary domain controller
+GuestVM -ConfigurationData $ConfigData -Role 'HyperVHost' -VMName 'SecondDomainController' -OutputPath $VMConfigPath
+Start-DscConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
+
 #Create the PullServerVM
 PullServerVM   -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
@@ -116,7 +125,5 @@ Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
 PullNodeVM     -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
 Start-DSCConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
 
-Write-Warning "About to configure Primary DC"
-Pause
-FirstDCVM      -ConfigurationData $ConfigData -Role 'HyperVHost'   -OutputPath $VMConfigPath
-Start-DscConfiguration -Path $VMConfigPath -Force -Wait -Verbose:$Verbose
+
+

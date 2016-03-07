@@ -4,7 +4,15 @@
 
 #>
 
-
+function New-MachineName {
+    param (
+        [Alias("Name")]
+        [String]$MachineName = '<undefined>'
+    )
+    $GUID = ([guid]::NewGuid()).guid
+    Write-Verbose "Generated GUID for $MachineName : $GUID"
+    $GUID
+}
 
 function Select-ModuleBase {
     param (
@@ -128,3 +136,4 @@ function New-DSCCertificate {
 Export-ModuleMember -Function 'Select-ModuleBase'
 Export-ModuleMember -Function 'Export-DSCModule'
 Export-ModuleMember -Function 'Import-Credential'
+Export-ModuleMember -Function 'New-MachineName'

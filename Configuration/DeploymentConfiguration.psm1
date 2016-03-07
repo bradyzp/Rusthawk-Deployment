@@ -1,14 +1,4 @@
-﻿#Resolve the module path for a specified DSCResourceModule
-function Get-DscResourceModulePath
-{
-    param(
-        [Parameter(Mandatory)]
-        [string] $DscResourceName)
-
-    $dscResource = Get-DscResource $DscResourceName
-    $dscResource.Module.ModuleBase
-}
-
+﻿
 #Generator for Hyper-V Virtual Machines on a Hyper-V Host
 Configuration VirtualMachine
 {
@@ -29,6 +19,7 @@ Configuration VirtualMachine
 
     $AllFiles = $VMConfig.VMFileCopy + $ConfigurationData.NonNodeData.CommonFiles
     $VHDPath  = "$($Node.VHDDestinationPath)\$($VMConfig.MachineName).$($Node.VHDGeneration)"
+
     cVHDFile FileCopy
     {
         PartitionNumber = $Node.VHDPartitionNumber
@@ -64,7 +55,8 @@ Configuration HyperVHost {
         [String]$Role
     )
 
-    Import-DSCResource -ModuleName xHyper-V, PSDesiredStateConfiguration
+    Import-DSCResource -ModuleName xHyper-V
+    Import-DSCResource -ModuleName PSDesiredStateConfiguration
 
     Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         WindowsFeature HyperV {
@@ -97,26 +89,25 @@ Configuration HyperVHost {
 
     .PARAMETER ConfigName
     (Optional) Specify a Configuration Block name different than the VMName
+
+    .EXAMPLE
+    GuestVM -ConfigurationData $ConfigData -Role HyperVHost -VMName SDC -ConfigName SecondDomainController -OutputPath .
 #>
-Configuration HyperVGuest {
+
+Configuration GuestVM {
     param (
         [Parameter(Mandatory)]
-        [String]$Role = "HyperVHos",
+        [String]$Role = "HyperVHost",
         [Parameter(Mandatory)]
         [String]$VMName,
         [String]$ConfigName = $VMName
     )
     
-    #Role is always HyperV - selects the HyperV Host node
-    #Virtual machines are pulled from 
     Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
-        #Select Machine parameters by $VMName
         VirtualMachine $VMName {
             VMConfig = $Node.$ConfigName
         }
     }
-    #e.g. replacing PullServerVM
-    #HyperVGuest -Role HyperV -VMName DSCPullServer
 }
 
 Configuration PullServerVM {
@@ -209,7 +200,7 @@ Configuration PullServer {
                 InterfaceAlias  = "Ethernet"
                 AddressFamily   = $Node.AddressFamily
             }
-        } #Else rely on DHCP
+        }
         xComputer PullServerName {
             Name          = $Node.MachineName
             WorkGroupName = 'WORKGROUP'
@@ -274,87 +265,169 @@ Configuration FirstDC {
     Import-DscResource -ModuleName PSDesiredStateConfiguration
     Import-DscResource -ModuleName xComputerManagement
     Import-DscResource -ModuleName xActiveDirectory -ModuleVersion '2.9.0.0'
+    Import-DscResource -ModuleName xNetworking
+    Import-DscResource -ModuleName xDHCPServer
+
+    $Data = $ConfigurationData.NonNodeData
+
+    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
+        User DomainAdmin {
+            UserName = "Administrator"
+            Password = $Node.DomainAdminCreds
+            Ensure = "Present"
+        }
+        xComputer RenameComputer {
+            Name = $Node.MachineName
+            DependsOn = "[User]DomainAdmin"
+        }
+        xIPAddress StaticIP {
+            IPAddress       = $Node.IPAddress
+            SubnetMask      = $Node.SubnetMask
+            InterfaceAlias  = "Ethernet"
+            AddressFamily   = $Node.AddressFamily
+        }
+        WindowsFeature DHCPRole {
+            Ensure = "Present"
+            Name   = "DHCP"
+            IncludeAllSubFeature = $true
+            DependsOn = "[xComputer]RenameComputer"
+        }
+        WindowsFeature DNSRole {
+            Ensure = "Present"
+            Name = "DNS"
+            IncludeAllSubFeature = $true
+            DependsOn = "[xComputer]RenameComputer"
+        }
+        WindowsFeature ADDSRole {
+            Ensure = "Present"
+            Name = "AD-Domain-Services"
+            IncludeAllSubFeature = $true
+            DependsOn = "[WindowsFeature]DNSRole"
+        }
+
+        xDhcpServerScope DHCPScope {
+            IPStartRange  = $Data.SubnetStart
+            IPEndRange    = $Data.SubnetEnd
+            SubnetMask    = $Data.SubnetMask
+            Name          = 'Rusthawk-Deployment-Zone'
+            AddressFamily = 'IPv4'
+            State         = "Active"
+            Ensure        = "Present"
+            
+        }
+        xDhcpServerOption DHCPOptions {
+            Ensure        = "Present"
+            ScopeID       = '192.168.10.0'
+            DnsDomain     = $Node.DomainName
+            Router        = '192.168.10.1'
+            AddressFamily = 'IPv4'
+            DnsServerIPAddress = $Data.DNSServers
+        }
+        xADDomain FirstDomain {
+            DomainName = $Node.DomainName
+            DomainAdministratorCredential = $Node.DomainAdminCreds
+            SafeModeAdministratorPassword = $Node.DomainSafeModePW
+            DependsOn = @("[WindowsFeature]ADDSRole","[xIPAddress]StaticIP")
+        }
+    }
+}
+
+Configuration DC {
+    param (
+        [Parameter(Mandatory)]
+        [String]$Role
+    )
+    Import-DscResource -ModuleName PSDesiredStateConfiguration
+    Import-DscResource -ModuleName xComputerManagement
+    Import-DscResource -ModuleName xActiveDirectory -ModuleVersion '2.9.0.0'
+    Import-DscResource -ModuleName xNetworking
 
     Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
         WindowsFeature DNSRole {
             Ensure = "Present"
             Name = "DNS"
-            IncludeAllSubFeature = $true
         }
         WindowsFeature ADDSRole {
             Ensure = "Present"
             Name = "AD-Domain-Services"
             IncludeAllSubFeature = $true
-            #DependsOn = "[WindowsFeature]DNSRole"
-        }
-        #Create the local user that will become the first domain administrator
-        User DomainAdminUser {
-            #UserName = $Node.DomainCreds.Username
-            UserName = "Administrator"
-            Password = $Node.DomainAdminCreds
-            Ensure = "Present"
-        }
-        xADDomain FirstDomain {
-            DomainName = $Node.DomainName
-            #Credential to check for existance of domain
-            DomainAdministratorCredential = $Node.DomainAdminCreds
-            SafeModeAdministratorPassword = $Node.DomainSafeModePW
-            ParentDomainName = ''
-            DependsOn = "[WindowsFeature]ADDSRole"
+            DependsOn = "[WindowsFeature]DNSRole"
         }
         xComputer RenameComputer {
             Name = $Node.MachineName
         }
-    }
-}
-
-Configuration DomainController {
-    param (
-        [Parameter(Mandatory)]
-        [String]$Role
-    )
-
-    Node $AllNodes.Where({$_.Role -eq $Role}).NodeName {
-        WindowsFeature ADDSRole {
-            Ensure = "Present"
-            Name = "AD-Domain-Services"
-            IncludeAllSubFeature = $true
+        xIPAddress StaticIP {
+            IPAddress       = $Node.IPAddress
+            SubnetMask      = $Node.SubnetMask
+            InterfaceAlias  = "Ethernet"
+            AddressFamily   = $Node.AddressFamily
+        }
+        xDnsServerAddress DNSAddr {
+            Address        = $ConfigurationData.NonNodeData.DNSServers
+            InterfaceAlias = "Ethernet"
+            AddressFamily  = $Node.AddressFamily
+        }
+        xWaitForADDomain DomainWait {
+            DomainName           = $Node.DomainName
+            DomainUserCredential = $Node.DomainAdminCreds
+            RetryCount           = 20
+            RetryIntervalSec     = 30
+            DependsOn            = "[WindowsFeature]ADDSRole"
         }
         xADDomainController DomainController {
-            DomainName = $Node.DomainName
+            DomainName                    = $Node.DomainName
             DomainAdministratorCredential = $Node.DomainAdminCreds
             SafeModeAdministratorPassword = $Node.DomainSafeModePW
+            DependsOn = "[xWaitForADDomain]DomainWait"
         }
-
-
-
     } #END NODE
-    
 }
 
 #Generate LCM Settings to pull configuration for all nodes where RefreshMode is set to $RefreshMode
 Configuration PullNodeLCM  {
     param (
         [Parameter(Mandatory)]
+        [ValidateSet('Pull')]
         [String]$RefreshMode
     )
     
     $NND = $ConfigurationData.NonNodeData
-
+    $PullServerURL = "HTTP://$($NND.PullserverAddress)`:$($NND.PullServerPort)/PSDscPullServer.svc"
+    
     Node $AllNodes.Where({$_.RefreshMode -eq $RefreshMode}).NodeName {
         LocalConfigurationManager {
-            RebootNodeIfNeeded = $True
-            RefreshMode = "Pull"
+            AllowModuleOverwrite = $true
             CertificateID = $Node.Thumbprint
             ConfigurationID = $Node.NodeName
             ConfigurationMode = "ApplyAndAutoCorrect"
+            RebootNodeIfNeeded = $True
+            RefreshMode = "Pull"
             RefreshFrequencyMins = 30
             DownloadManagerName = "WebDownloadManager"
-            AllowModuleOverwrite = $true
+            
             #Add variable or dns name property for pull server
-            DownloadManagerCustomData = @{ServerUrl="http://$($ConfigurationData.NonNodeData.PullServerAddress)`:$($ConfigurationData.NonNodeData.PullServerPort)/psdscpullserver.svc";
-                                            AllowUnsecureConnection = 'true'
-                                            }
+            DownloadManagerCustomData = @{ServerUrl=$PullServerURL;
+                                          AllowUnsecureConnection = 'true'
+                                         }
+        }
+    }
+}
+
+Configuration PushNodeLCM {
+    param (
+        [Parameter(Mandatory)]
+        [ValidateSet('Push')]
+        [String]$RefreshMode
+    )
+
+    Node $AllNodes.Where({$_.RefreshMode -eq $RefreshMode}).NodeName {
+        LocalConfigurationManager {
+            CertificateID = $Node.Thumbprint
+            ConfigurationID = $Node.NodeName
+            ConfigurationMode = "ApplyAndAutoCorrect"
+            RebootNodeIfNeeded = $true
+            RefreshMode = "Push"
+            RefreshFrequencyMins = 30
         }
     }
 }

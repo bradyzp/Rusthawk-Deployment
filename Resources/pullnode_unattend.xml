@@ -9,7 +9,7 @@
             </OOBE>
             <UserAccounts>
                 <AdministratorPassword>
-                    <Value>cQBzAGUAcgBXAFcAQAAjADMAcwBnADEAQQBkAG0AaQBuAGkAcwB0AHIAYQB0AG8AcgBQAGEAcwBzAHcAbwByAGQA</Value>
+                    <Value></Value>
                     <PlainText>false</PlainText>
                 </AdministratorPassword>
             </UserAccounts>
